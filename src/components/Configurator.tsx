@@ -1,0 +1,989 @@
+import React, { useState } from 'react';
+import {
+  Settings,
+  Palette,
+  ShieldAlert,
+  Smartphone,
+  Layers,
+  Sparkles,
+  Sliders,
+  Check,
+  Lock,
+  Globe,
+  Bell,
+  Camera,
+  MapPin,
+  Folder,
+  Mic,
+  Cpu,
+  Code,
+  Zap,
+  MessageSquare,
+  Fingerprint,
+  ShieldCheck,
+  RefreshCw,
+  Monitor,
+  PanelTop,
+  PanelBottom,
+  Terminal,
+  Laptop,
+  CheckCircle2,
+} from 'lucide-react';
+import { AppConfig } from '../types';
+
+interface ConfiguratorProps {
+  config: AppConfig;
+  onChangeConfig: (updated: Partial<AppConfig>) => void;
+  onResetDefaults: () => void;
+}
+
+export const Configurator: React.FC<ConfiguratorProps> = ({
+  config,
+  onChangeConfig,
+  onResetDefaults,
+}) => {
+  const [activeTab, setActiveTab] = useState<'general' | 'engine' | 'visuals' | 'nav' | 'custom_code' | 'advanced' | 'permissions' | 'platforms'>('general');
+
+  const handlePermissionToggle = (key: keyof AppConfig['permissions']) => {
+    onChangeConfig({
+      permissions: {
+        ...config.permissions,
+        [key]: !config.permissions[key],
+      },
+    });
+  };
+
+  const handlePlatformToggle = (key: keyof AppConfig['supportedPlatforms']) => {
+    onChangeConfig({
+      supportedPlatforms: {
+        ...config.supportedPlatforms,
+        [key]: !config.supportedPlatforms[key],
+      },
+    });
+  };
+
+  return (
+    <div className="bg-slate-900 border border-slate-800 rounded-2xl p-4 sm:p-6 shadow-2xl">
+      {/* Sub-navigation Tabs */}
+      <div className="flex flex-wrap items-center gap-2 border-b border-slate-800 pb-4 mb-6">
+        <button
+          onClick={() => setActiveTab('general')}
+          className={`flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-bold transition-all ${
+            activeTab === 'general'
+              ? 'bg-sky-500 text-slate-950 shadow-md'
+              : 'bg-slate-800/80 text-slate-400 hover:text-white'
+          }`}
+        >
+          <Settings className="w-4 h-4" />
+          <span>Identitas App</span>
+        </button>
+
+        <button
+          onClick={() => setActiveTab('engine')}
+          className={`flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-bold transition-all ${
+            activeTab === 'engine'
+              ? 'bg-sky-500 text-slate-950 shadow-md'
+              : 'bg-slate-800/80 text-slate-400 hover:text-white'
+          }`}
+        >
+          <Cpu className="w-4 h-4" />
+          <span>Multi-Engine Choice</span>
+        </button>
+
+        <button
+          onClick={() => setActiveTab('visuals')}
+          className={`flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-bold transition-all ${
+            activeTab === 'visuals'
+              ? 'bg-sky-500 text-slate-950 shadow-md'
+              : 'bg-slate-800/80 text-slate-400 hover:text-white'
+          }`}
+        >
+          <Palette className="w-4 h-4" />
+          <span>Visual & Splash</span>
+        </button>
+
+        <button
+          onClick={() => setActiveTab('nav')}
+          className={`flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-bold transition-all ${
+            activeTab === 'nav'
+              ? 'bg-sky-500 text-slate-950 shadow-md'
+              : 'bg-slate-800/80 text-slate-400 hover:text-white'
+          }`}
+        >
+          <Sliders className="w-4 h-4" />
+          <span>Navigation & Offline</span>
+        </button>
+
+        <button
+          onClick={() => setActiveTab('custom_code')}
+          className={`flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-bold transition-all ${
+            activeTab === 'custom_code'
+              ? 'bg-sky-500 text-slate-950 shadow-md'
+              : 'bg-slate-800/80 text-slate-400 hover:text-white'
+          }`}
+        >
+          <Code className="w-4 h-4" />
+          <span>Inject CSS & JS</span>
+        </button>
+
+        <button
+          onClick={() => setActiveTab('advanced')}
+          className={`flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-bold transition-all ${
+            activeTab === 'advanced'
+              ? 'bg-sky-500 text-slate-950 shadow-md'
+              : 'bg-slate-800/80 text-slate-400 hover:text-white'
+          }`}
+        >
+          <Sparkles className="w-4 h-4" />
+          <span>Fitur Lanjutan</span>
+        </button>
+
+        <button
+          onClick={() => setActiveTab('permissions')}
+          className={`flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-bold transition-all ${
+            activeTab === 'permissions'
+              ? 'bg-sky-500 text-slate-950 shadow-md'
+              : 'bg-slate-800/80 text-slate-400 hover:text-white'
+          }`}
+        >
+          <ShieldAlert className="w-4 h-4" />
+          <span>Izin Native</span>
+        </button>
+
+        <button
+          onClick={() => setActiveTab('platforms')}
+          className={`flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-bold transition-all ${
+            activeTab === 'platforms'
+              ? 'bg-sky-500 text-slate-950 shadow-md'
+              : 'bg-slate-800/80 text-slate-400 hover:text-white'
+          }`}
+        >
+          <Layers className="w-4 h-4" />
+          <span>Platforms</span>
+        </button>
+      </div>
+
+      {/* TAB 1: GENERAL IDENTITY */}
+      {activeTab === 'general' && (
+        <div className="space-y-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <label className="block text-xs font-semibold text-slate-300 mb-1.5">
+                Nama Aplikasi Flutter
+              </label>
+              <input
+                type="text"
+                value={config.appName}
+                onChange={(e) => onChangeConfig({ appName: e.target.value })}
+                className="w-full px-3.5 py-2.5 bg-slate-950 border border-slate-700/80 rounded-xl text-white text-sm focus:outline-none focus:ring-2 focus:ring-sky-500"
+                placeholder="Contoh: Shopee Mobile"
+              />
+            </div>
+
+            <div>
+              <label className="block text-xs font-semibold text-slate-300 mb-1.5">
+                Package ID (Android & iOS)
+              </label>
+              <input
+                type="text"
+                value={config.packageName}
+                onChange={(e) => onChangeConfig({ packageName: e.target.value })}
+                className="w-full px-3.5 py-2.5 bg-slate-950 border border-slate-700/80 rounded-xl text-white text-sm font-mono focus:outline-none focus:ring-2 focus:ring-sky-500"
+                placeholder="com.jooexe.appname"
+              />
+            </div>
+
+            <div>
+              <label className="block text-xs font-semibold text-slate-300 mb-1.5">
+                Versi Aplikasi
+              </label>
+              <input
+                type="text"
+                value={config.version}
+                onChange={(e) => onChangeConfig({ version: e.target.value })}
+                className="w-full px-3.5 py-2.5 bg-slate-950 border border-slate-700/80 rounded-xl text-white text-sm font-mono focus:outline-none focus:ring-2 focus:ring-sky-500"
+                placeholder="1.0.0"
+              />
+            </div>
+
+            <div>
+              <label className="block text-xs font-semibold text-slate-300 mb-1.5">
+                Developer / Author
+              </label>
+              <input
+                type="text"
+                value={config.author}
+                onChange={(e) => onChangeConfig({ author: e.target.value })}
+                className="w-full px-3.5 py-2.5 bg-slate-950 border border-slate-700/80 rounded-xl text-white text-sm focus:outline-none focus:ring-2 focus:ring-sky-500"
+                placeholder="joo.exe"
+              />
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* TAB: MULTI-ENGINE SELECTION */}
+      {activeTab === 'engine' && (
+        <div className="space-y-4">
+          <div>
+            <h3 className="text-sm font-bold text-white mb-1">Pilih Native Compilation Engine</h3>
+            <p className="text-xs text-slate-400 mb-4">
+              Pilih mesin pendorong utama yang akan mengeksekusi aplikasi web Anda secara native di perangkat mobile.
+            </p>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <button
+                type="button"
+                onClick={() => onChangeConfig({ engineType: 'flutter' })}
+                className={`p-4 rounded-xl border text-left transition-all ${
+                  config.engineType === 'flutter'
+                    ? 'bg-sky-500/20 border-sky-500 text-white ring-1 ring-sky-500'
+                    : 'bg-slate-950 border-slate-800 text-slate-400 hover:text-white'
+                }`}
+              >
+                <div className="flex items-center justify-between mb-2">
+                  <span className="font-bold text-sm text-sky-400 flex items-center gap-1.5">
+                    <Zap className="w-4 h-4 text-sky-400" />
+                    <span>Flutter 3.x Engine (Rekomendasi)</span>
+                  </span>
+                  <span className="text-[10px] bg-sky-500/30 text-sky-300 px-2 py-0.5 rounded-full font-mono">Ultra-Fast</span>
+                </div>
+                <p className="text-xs text-slate-300 mb-2">
+                  Menggunakan `webview_flutter` versi terbaru, hardware acceleration GPU, smart cache, and multi-platform compilation (Android, iOS, Web, Desktop).
+                </p>
+                <div className="text-[11px] text-slate-400 flex items-center gap-2">
+                  <span className="flex items-center gap-1"><Check className="w-3 h-3 text-sky-400" /> Pull-to-refresh</span>
+                  <span className="flex items-center gap-1"><Check className="w-3 h-3 text-sky-400" /> Hardware Back Button</span>
+                  <span className="flex items-center gap-1"><Check className="w-3 h-3 text-sky-400" /> JS Bridge</span>
+                </div>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => onChangeConfig({ engineType: 'kotlin' })}
+                className={`p-4 rounded-xl border text-left transition-all ${
+                  config.engineType === 'kotlin'
+                    ? 'bg-emerald-500/20 border-emerald-500 text-white ring-1 ring-emerald-500'
+                    : 'bg-slate-950 border-slate-800 text-slate-400 hover:text-white'
+                }`}
+              >
+                <div className="flex items-center justify-between mb-2">
+                  <span className="font-bold text-sm text-emerald-400 flex items-center gap-1.5">
+                    <Smartphone className="w-4 h-4 text-emerald-400" />
+                    <span>Android Jetpack Compose</span>
+                  </span>
+                  <span className="text-[10px] bg-emerald-500/30 text-emerald-300 px-2 py-0.5 rounded-full font-mono">Pure Native</span>
+                </div>
+                <p className="text-xs text-slate-300 mb-2">
+                  Kotlin + AndroidX WebKit + Material3 Design. Ukuran APK sangat kecil dan dioptimalkan khusus untuk ekosistem Android.
+                </p>
+                <div className="text-[11px] text-slate-400 flex items-center gap-2">
+                  <span className="flex items-center gap-1"><Check className="w-3 h-3 text-emerald-400" /> AndroidX WebKit</span>
+                  <span className="flex items-center gap-1"><Check className="w-3 h-3 text-emerald-400" /> Splash API</span>
+                  <span className="flex items-center gap-1"><Check className="w-3 h-3 text-emerald-400" /> Native Intent</span>
+                </div>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => onChangeConfig({ engineType: 'swift' })}
+                className={`p-4 rounded-xl border text-left transition-all ${
+                  config.engineType === 'swift'
+                    ? 'bg-purple-500/20 border-purple-500 text-white ring-1 ring-purple-500'
+                    : 'bg-slate-950 border-slate-800 text-slate-400 hover:text-white'
+                }`}
+              >
+                <div className="flex items-center justify-between mb-2">
+                  <span className="font-bold text-sm text-purple-400 flex items-center gap-1.5">
+                    <Smartphone className="w-4 h-4 text-purple-400" />
+                    <span>iOS Swift / SwiftUI</span>
+                  </span>
+                  <span className="text-[10px] bg-purple-500/30 text-purple-300 px-2 py-0.5 rounded-full font-mono">Apple Native</span>
+                </div>
+                <p className="text-xs text-slate-300 mb-2">
+                  SwiftUI + WKWebView + Apple Push Notification Service (APNS). Performa 60FPS murni untuk iPhone & iPad.
+                </p>
+                <div className="text-[11px] text-slate-400 flex items-center gap-2">
+                  <span className="flex items-center gap-1"><Check className="w-3 h-3 text-purple-400" /> WKWebView</span>
+                  <span className="flex items-center gap-1"><Check className="w-3 h-3 text-purple-400" /> iOS Swipe Back</span>
+                  <span className="flex items-center gap-1"><Check className="w-3 h-3 text-purple-400" /> Safari Engine</span>
+                </div>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => onChangeConfig({ engineType: 'capacitor' })}
+                className={`p-4 rounded-xl border text-left transition-all ${
+                  config.engineType === 'capacitor'
+                    ? 'bg-amber-500/20 border-amber-500 text-white ring-1 ring-amber-500'
+                    : 'bg-slate-950 border-slate-800 text-slate-400 hover:text-white'
+                }`}
+              >
+                <div className="flex items-center justify-between mb-2">
+                  <span className="font-bold text-sm text-amber-400 flex items-center gap-1.5">
+                    <Layers className="w-4 h-4 text-amber-400" />
+                    <span>Capacitor / PWA Hybrid</span>
+                  </span>
+                  <span className="text-[10px] bg-amber-500/30 text-amber-300 px-2 py-0.5 rounded-full font-mono">Cross-PWA</span>
+                </div>
+                <p className="text-xs text-slate-300 mb-2">
+                  Capacitor 6.x runtime dengan Service Worker caching dan akses penuh ke Native Plugins web JS.
+                </p>
+                <div className="text-[11px] text-slate-400 flex items-center gap-2">
+                  <span className="flex items-center gap-1"><Check className="w-3 h-3 text-amber-400" /> Offline SW</span>
+                  <span className="flex items-center gap-1"><Check className="w-3 h-3 text-amber-400" /> Web Plugins</span>
+                  <span className="flex items-center gap-1"><Check className="w-3 h-3 text-amber-400" /> Cross-Platform</span>
+                </div>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => onChangeConfig({ engineType: 'react-native' })}
+                className={`p-4 rounded-xl border text-left transition-all ${
+                  config.engineType === 'react-native'
+                    ? 'bg-cyan-500/20 border-cyan-500 text-white ring-1 ring-cyan-500'
+                    : 'bg-slate-950 border-slate-800 text-slate-400 hover:text-white'
+                }`}
+              >
+                <div className="flex items-center justify-between mb-2">
+                  <span className="font-bold text-sm text-cyan-400 flex items-center gap-1.5">
+                    <Code className="w-4 h-4 text-cyan-400" />
+                    <span>React Native / Expo Engine</span>
+                  </span>
+                  <span className="text-[10px] bg-cyan-500/30 text-cyan-300 px-2 py-0.5 rounded-full font-mono">Baru & Modern</span>
+                </div>
+                <p className="text-xs text-slate-300 mb-2">
+                  React Native 0.74 + Expo Webview shell. Dioptimalkan untuk kompatibilitas JavaScript modern dan Fast Refresh.
+                </p>
+                <div className="text-[11px] text-slate-400 flex items-center gap-2">
+                  <span className="flex items-center gap-1"><Check className="w-3 h-3 text-cyan-400" /> Expo Webview</span>
+                  <span className="flex items-center gap-1"><Check className="w-3 h-3 text-cyan-400" /> React Hooks Bridge</span>
+                  <span className="flex items-center gap-1"><Check className="w-3 h-3 text-cyan-400" /> Universal JS</span>
+                </div>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => onChangeConfig({ engineType: 'tauri' })}
+                className={`p-4 rounded-xl border text-left transition-all ${
+                  config.engineType === 'tauri'
+                    ? 'bg-rose-500/20 border-rose-500 text-white ring-1 ring-rose-500'
+                    : 'bg-slate-950 border-slate-800 text-slate-400 hover:text-white'
+                }`}
+              >
+                <div className="flex items-center justify-between mb-2">
+                  <span className="font-bold text-sm text-rose-400 flex items-center gap-1.5">
+                    <Cpu className="w-4 h-4 text-rose-400" />
+                    <span>Tauri 2.0 Rust Engine</span>
+                  </span>
+                  <span className="text-[10px] bg-rose-500/30 text-rose-300 px-2 py-0.5 rounded-full font-mono">Rust Power</span>
+                </div>
+                <p className="text-xs text-slate-300 mb-2">
+                  Engine Tauri versi 2 (Rust + WebView2/WKWebView). Ukuran executable sangat kecil (&lt; 5MB) dan keamanan tingkat tinggi.
+                </p>
+                <div className="text-[11px] text-slate-400 flex items-center gap-2">
+                  <span className="flex items-center gap-1"><Check className="w-3 h-3 text-rose-400" /> Hardened Memory</span>
+                  <span className="flex items-center gap-1"><Check className="w-3 h-3 text-rose-400" /> Minimal Memory RAM</span>
+                  <span className="flex items-center gap-1"><Check className="w-3 h-3 text-rose-400" /> Cross-Desktop/Mobile</span>
+                </div>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => onChangeConfig({ engineType: 'pwa-shell' })}
+                className={`p-4 rounded-xl border text-left transition-all ${
+                  config.engineType === 'pwa-shell'
+                    ? 'bg-indigo-500/20 border-indigo-500 text-white ring-1 ring-indigo-500'
+                    : 'bg-slate-950 border-slate-800 text-slate-400 hover:text-white'
+                }`}
+              >
+                <div className="flex items-center justify-between mb-2">
+                  <span className="font-bold text-sm text-indigo-400 flex items-center gap-1.5">
+                    <Globe className="w-4 h-4 text-indigo-400" />
+                    <span>PWA Standalone WebShell</span>
+                  </span>
+                  <span className="text-[10px] bg-indigo-500/30 text-indigo-300 px-2 py-0.5 rounded-full font-mono">Web-Only</span>
+                </div>
+                <p className="text-xs text-slate-300 mb-2">
+                  Manifest V3 Progressive Web App dengan Workbox Service Worker offline caching. Tanpa butuh SDK Android/iOS.
+                </p>
+                <div className="text-[11px] text-slate-400 flex items-center gap-2">
+                  <span className="flex items-center gap-1"><Check className="w-3 h-3 text-indigo-400" /> Installable App</span>
+                  <span className="flex items-center gap-1"><Check className="w-3 h-3 text-indigo-400" /> Offline Cache</span>
+                  <span className="flex items-center gap-1"><Check className="w-3 h-3 text-indigo-400" /> Zero-SDK Needed</span>
+                </div>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* TAB 2: VISUALS & SPLASH */}
+      {activeTab === 'visuals' && (
+        <div className="space-y-5">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+            <div>
+              <label className="block text-xs font-semibold text-slate-300 mb-1.5">
+                Warna Utama (Theme Color)
+              </label>
+              <div className="flex items-center gap-2">
+                <input
+                  type="color"
+                  value={config.themeColor}
+                  onChange={(e) => onChangeConfig({ themeColor: e.target.value })}
+                  className="w-10 h-10 rounded-xl bg-slate-950 border border-slate-700 cursor-pointer"
+                />
+                <input
+                  type="text"
+                  value={config.themeColor}
+                  onChange={(e) => onChangeConfig({ themeColor: e.target.value })}
+                  className="flex-1 px-3 py-2 bg-slate-950 border border-slate-700 rounded-xl text-white font-mono text-xs"
+                />
+              </div>
+            </div>
+
+            <div>
+              <label className="block text-xs font-semibold text-slate-300 mb-1.5">
+                Warna Aksen (Accent Color)
+              </label>
+              <div className="flex items-center gap-2">
+                <input
+                  type="color"
+                  value={config.accentColor}
+                  onChange={(e) => onChangeConfig({ accentColor: e.target.value })}
+                  className="w-10 h-10 rounded-xl bg-slate-950 border border-slate-700 cursor-pointer"
+                />
+                <input
+                  type="text"
+                  value={config.accentColor}
+                  onChange={(e) => onChangeConfig({ accentColor: e.target.value })}
+                  className="flex-1 px-3 py-2 bg-slate-950 border border-slate-700 rounded-xl text-white font-mono text-xs"
+                />
+              </div>
+            </div>
+
+            <div>
+              <label className="block text-xs font-semibold text-slate-300 mb-1.5">
+                Icon Emoji App
+              </label>
+              <input
+                type="text"
+                value={config.iconEmoji}
+                onChange={(e) => onChangeConfig({ iconEmoji: e.target.value })}
+                className="w-full px-3.5 py-2 bg-slate-950 border border-slate-700 rounded-xl text-white text-center text-xl"
+              />
+            </div>
+          </div>
+
+          <div className="pt-4 border-t border-slate-800 grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <label className="block text-xs font-semibold text-slate-300 mb-1.5">
+                Judul Splash Screen
+              </label>
+              <input
+                type="text"
+                value={config.splashTitle}
+                onChange={(e) => onChangeConfig({ splashTitle: e.target.value })}
+                className="w-full px-3.5 py-2.5 bg-slate-950 border border-slate-700/80 rounded-xl text-white text-sm"
+              />
+            </div>
+
+            <div>
+              <label className="block text-xs font-semibold text-slate-300 mb-1.5">
+                Slogan / Sub-judul Splash Screen
+              </label>
+              <input
+                type="text"
+                value={config.splashTagline}
+                onChange={(e) => onChangeConfig({ splashTagline: e.target.value })}
+                className="w-full px-3.5 py-2.5 bg-slate-950 border border-slate-700/80 rounded-xl text-white text-sm"
+              />
+            </div>
+
+            <div>
+              <label className="block text-xs font-semibold text-slate-300 mb-1.5">
+                Durasi Splash Screen: {config.splashDurationSec} detik
+              </label>
+              <input
+                type="range"
+                min={1}
+                max={5}
+                step={1}
+                value={config.splashDurationSec}
+                onChange={(e) => onChangeConfig({ splashDurationSec: parseInt(e.target.value) })}
+                className="w-full accent-sky-500"
+              />
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* TAB 3: NAVIGATION & WEBVIEW */}
+      {activeTab === 'nav' && (
+        <div className="space-y-4">
+          <div>
+            <label className="block text-xs font-semibold text-slate-300 mb-2">
+              Mode Layout Tampilan (Nav Mode)
+            </label>
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+              <button
+                type="button"
+                onClick={() => onChangeConfig({ navMode: 'fullscreen' })}
+                className={`p-3 rounded-xl border text-left transition-all ${
+                  config.navMode === 'fullscreen'
+                    ? 'bg-sky-500/20 border-sky-500 text-white'
+                    : 'bg-slate-950 border-slate-800 text-slate-400 hover:text-white'
+                }`}
+              >
+                <div className="font-bold text-xs mb-1 flex items-center gap-1.5">
+                  <Smartphone className="w-3.5 h-3.5 text-sky-400" />
+                  <span>Fullscreen Mobile</span>
+                </div>
+                <div className="text-[11px] text-slate-400">Tampilan layar penuh mirip PWA native.</div>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => onChangeConfig({ navMode: 'header' })}
+                className={`p-3 rounded-xl border text-left transition-all ${
+                  config.navMode === 'header'
+                    ? 'bg-sky-500/20 border-sky-500 text-white'
+                    : 'bg-slate-950 border-slate-800 text-slate-400 hover:text-white'
+                }`}
+              >
+                <div className="font-bold text-xs mb-1 flex items-center gap-1.5">
+                  <PanelTop className="w-3.5 h-3.5 text-sky-400" />
+                  <span>Native Header Bar</span>
+                </div>
+                <div className="text-[11px] text-slate-400">Termasuk tombol Refresh, Back, dan Forward.</div>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => onChangeConfig({ navMode: 'bottom_nav' })}
+                className={`p-3 rounded-xl border text-left transition-all ${
+                  config.navMode === 'bottom_nav'
+                    ? 'bg-sky-500/20 border-sky-500 text-white'
+                    : 'bg-slate-950 border-slate-800 text-slate-400 hover:text-white'
+                }`}
+              >
+                <div className="font-bold text-xs mb-1 flex items-center gap-1.5">
+                  <PanelBottom className="w-3.5 h-3.5 text-sky-400" />
+                  <span>Bottom Navigation Bar</span>
+                </div>
+                <div className="text-[11px] text-slate-400">Navigasi bawah khusus untuk berpindah tab.</div>
+              </button>
+            </div>
+          </div>
+
+          <div className="pt-4 border-t border-slate-800 space-y-3">
+            <label className="flex items-center justify-between p-3 bg-slate-950 border border-slate-800 rounded-xl cursor-pointer">
+              <div>
+                <div className="text-xs font-bold text-white">Enable Pull-To-Refresh</div>
+                <div className="text-[11px] text-slate-400">Pengguna dapat menggeser layar ke bawah untuk muat ulang.</div>
+              </div>
+              <input
+                type="checkbox"
+                checked={config.enablePullToRefresh}
+                onChange={(e) => onChangeConfig({ enablePullToRefresh: e.target.checked })}
+                className="w-4 h-4 accent-sky-500"
+              />
+            </label>
+
+            <label className="flex items-center justify-between p-3 bg-slate-950 border border-slate-800 rounded-xl cursor-pointer">
+              <div>
+                <div className="text-xs font-bold text-white">Smart Offline Guard & Retry Screen</div>
+                <div className="text-[11px] text-slate-400">Tampilkan halaman khusus saat internet terputus.</div>
+              </div>
+              <input
+                type="checkbox"
+                checked={config.enableOfflineFallback}
+                onChange={(e) => onChangeConfig({ enableOfflineFallback: e.target.checked })}
+                className="w-4 h-4 accent-sky-500"
+              />
+            </label>
+
+            {config.enableOfflineFallback && (
+              <div className="mt-2 p-3 bg-slate-950 border border-slate-800 rounded-xl">
+                <label className="block text-xs font-bold text-slate-300 mb-1">Custom HTML Halaman Offline</label>
+                <textarea
+                  value={config.customOfflineHtml}
+                  onChange={(e) => onChangeConfig({ customOfflineHtml: e.target.value })}
+                  rows={3}
+                  className="w-full p-2.5 bg-slate-900 border border-slate-700 rounded-lg text-xs font-mono text-slate-200 focus:outline-none focus:ring-1 focus:ring-sky-500"
+                  placeholder="<h2>Koneksi Terputus</h2>"
+                />
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* TAB: CUSTOM CODE INJECTION */}
+      {activeTab === 'custom_code' && (
+        <div className="space-y-4">
+          <label className="flex items-center justify-between p-3.5 bg-slate-950 border border-slate-800 rounded-xl cursor-pointer">
+            <div>
+              <div className="text-xs font-bold text-white">Aktifkan Custom CSS & JS Injector</div>
+              <div className="text-[11px] text-slate-400">Injeksi CSS untuk merubah tampilan web (misal: sembunyikan header) dan JS otomatis saat dimuat.</div>
+            </div>
+            <input
+              type="checkbox"
+              checked={config.enableCustomCssJs}
+              onChange={(e) => onChangeConfig({ enableCustomCssJs: e.target.checked })}
+              className="w-4 h-4 accent-sky-500"
+            />
+          </label>
+
+          {config.enableCustomCssJs && (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <label className="block text-xs font-bold text-slate-300 mb-1.5 flex items-center justify-between">
+                  <span>Injeksi Custom CSS</span>
+                  <span className="text-[10px] text-sky-400 font-normal">Sembunyikan elemen web</span>
+                </label>
+                <textarea
+                  value={config.customCss}
+                  onChange={(e) => onChangeConfig({ customCss: e.target.value })}
+                  rows={6}
+                  className="w-full p-3 bg-slate-950 border border-slate-800 rounded-xl text-xs font-mono text-sky-300 focus:outline-none focus:ring-2 focus:ring-sky-500"
+                  placeholder="/* .site-header, .footer { display: none !important; } */"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-slate-300 mb-1.5 flex items-center justify-between">
+                  <span>Injeksi Custom JavaScript</span>
+                  <span className="text-[10px] text-amber-400 font-normal">Skenario Otomatis</span>
+                </label>
+                <textarea
+                  value={config.customJs}
+                  onChange={(e) => onChangeConfig({ customJs: e.target.value })}
+                  rows={6}
+                  className="w-full p-3 bg-slate-950 border border-slate-800 rounded-xl text-xs font-mono text-amber-300 focus:outline-none focus:ring-2 focus:ring-sky-500"
+                  placeholder="console.log('Injected JS from Web2App');"
+                />
+              </div>
+            </div>
+          )}
+
+          <div className="pt-4 border-t border-slate-800">
+            <h4 className="text-xs font-bold text-white mb-2">Deep Linking Custom Scheme</h4>
+            <div className="flex items-center gap-2">
+              <input
+                type="text"
+                value={config.deepLinkScheme}
+                onChange={(e) => onChangeConfig({ deepLinkScheme: e.target.value })}
+                className="w-full px-3.5 py-2.5 bg-slate-950 border border-slate-700 rounded-xl text-xs font-mono text-white"
+                placeholder="myapp"
+              />
+              <span className="text-xs text-slate-400 font-mono">://</span>
+            </div>
+            <p className="text-[11px] text-slate-500 mt-1">
+              Pengguna dapat membuka aplikasi Anda dari browser dengan mengetik <span className="text-slate-300 font-mono">{config.deepLinkScheme || 'myapp'}://open</span>
+            </p>
+          </div>
+        </div>
+      )}
+
+      {/* TAB: ADVANCED FEATURES (100% COMPLETE) */}
+      {activeTab === 'advanced' && (
+        <div className="space-y-5">
+          {/* 1. Floating Action Button (FAB) */}
+          <div className="p-4 bg-slate-950 border border-slate-800 rounded-xl space-y-3">
+            <label className="flex items-center justify-between cursor-pointer">
+              <div>
+                <div className="text-xs font-bold text-white flex items-center gap-2">
+                  <MessageSquare className="w-4 h-4 text-emerald-400 inline" />
+                  <span>Native Floating Action Button (FAB)</span>
+                  <span className="text-[10px] bg-emerald-500/20 text-emerald-300 px-2 py-0.5 rounded-full font-mono">Populer</span>
+                </div>
+                <div className="text-[11px] text-slate-400">Tampilkan tombol melayang di pojok layar (contoh: Chat WhatsApp CS atau Telepon).</div>
+              </div>
+              <input
+                type="checkbox"
+                checked={config.enableFloatingButton}
+                onChange={(e) => onChangeConfig({ enableFloatingButton: e.target.checked })}
+                className="w-4 h-4 accent-sky-500"
+              />
+            </label>
+
+            {config.enableFloatingButton && (
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-3 pt-3 border-t border-slate-800">
+                <div>
+                  <label className="block text-xs font-semibold text-slate-300 mb-1">Tipe Tombol FAB</label>
+                  <select
+                    value={config.fabType}
+                    onChange={(e) => onChangeConfig({ fabType: e.target.value as any })}
+                    className="w-full px-3 py-2 bg-slate-900 border border-slate-700 rounded-xl text-white text-xs focus:outline-none focus:ring-2 focus:ring-sky-500"
+                  >
+                    <option value="whatsapp">WhatsApp Direct Chat</option>
+                    <option value="call">Telepon Langsung (Call)</option>
+                    <option value="url">Buka Link Khusus</option>
+                    <option value="custom_js">Eksekusi Script JS</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-semibold text-slate-300 mb-1">
+                    {config.fabType === 'whatsapp' || config.fabType === 'call' ? 'Nomor HP (dengan 62)' : 'Target URL / Script'}
+                  </label>
+                  <input
+                    type="text"
+                    value={config.fabTarget}
+                    onChange={(e) => onChangeConfig({ fabTarget: e.target.value })}
+                    className="w-full px-3 py-2 bg-slate-900 border border-slate-700 rounded-xl text-white text-xs font-mono"
+                    placeholder="6281234567890"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-semibold text-slate-300 mb-1">Posisi Layar</label>
+                  <select
+                    value={config.fabPosition}
+                    onChange={(e) => onChangeConfig({ fabPosition: e.target.value as any })}
+                    className="w-full px-3 py-2 bg-slate-900 border border-slate-700 rounded-xl text-white text-xs focus:outline-none focus:ring-2 focus:ring-sky-500"
+                  >
+                    <option value="bottom_right">Pojok Kanan Bawah</option>
+                    <option value="bottom_left">Pojok Kiri Bawah</option>
+                  </select>
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* 2. Security & Anti-Screenshot Guard */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="p-4 bg-slate-950 border border-slate-800 rounded-xl space-y-2">
+              <label className="flex items-center justify-between cursor-pointer">
+                <div>
+                  <div className="text-xs font-bold text-white flex items-center gap-1.5">
+                    <ShieldCheck className="w-4 h-4 text-sky-400" />
+                    <span>Keamanan Layar (Anti-Screenshot)</span>
+                  </div>
+                  <div className="text-[11px] text-slate-400">Aktifkan FLAG_SECURE untuk cegah screenshot & rekaman layar (cocok untuk app finansial).</div>
+                </div>
+                <input
+                  type="checkbox"
+                  checked={config.enableScreenSecurity}
+                  onChange={(e) => onChangeConfig({ enableScreenSecurity: e.target.checked })}
+                  className="w-4 h-4 accent-sky-500"
+                />
+              </label>
+            </div>
+
+            <div className="p-4 bg-slate-950 border border-slate-800 rounded-xl space-y-2">
+              <label className="flex items-center justify-between cursor-pointer">
+                <div>
+                  <div className="text-xs font-bold text-white flex items-center gap-1.5">
+                    <Fingerprint className="w-4 h-4 text-sky-400" />
+                    <span>Biometric / Fingerprint App Lock</span>
+                  </div>
+                  <div className="text-[11px] text-slate-400">Wajibkan verifikasi Sidik Jari / FaceID sebelum pengguna dapat membuka app.</div>
+                </div>
+                <input
+                  type="checkbox"
+                  checked={config.enableBiometrics}
+                  onChange={(e) => onChangeConfig({ enableBiometrics: e.target.checked })}
+                  className="w-4 h-4 accent-sky-500"
+                />
+              </label>
+            </div>
+          </div>
+
+          {/* 3. SSL Pinning & Domain Whitelist */}
+          <div className="p-4 bg-slate-950 border border-slate-800 rounded-xl space-y-3">
+            <label className="flex items-center justify-between cursor-pointer">
+              <div>
+                <div className="text-xs font-bold text-white flex items-center gap-1.5">
+                  <Lock className="w-4 h-4 text-sky-400" />
+                  <span>SSL Pinning & Domain Whitelist Filter</span>
+                </div>
+                <div className="text-[11px] text-slate-400">Kunci WebView hanya untuk domain resmi dan cegah serangan Phishing/Man-in-the-middle.</div>
+              </div>
+              <input
+                type="checkbox"
+                checked={config.enableSslPinning}
+                onChange={(e) => onChangeConfig({ enableSslPinning: e.target.checked })}
+                className="w-4 h-4 accent-sky-500"
+              />
+            </label>
+
+            {config.enableSslPinning && (
+              <div className="pt-2">
+                <label className="block text-xs font-semibold text-slate-300 mb-1">Daftar Domain Diizinkan (pisahkan koma)</label>
+                <input
+                  type="text"
+                  value={config.allowedDomains}
+                  onChange={(e) => onChangeConfig({ allowedDomains: e.target.value })}
+                  className="w-full px-3 py-2 bg-slate-900 border border-slate-700 rounded-xl text-white text-xs font-mono"
+                  placeholder="*.shopee.co.id, *.shopeepay.co.id"
+                />
+              </div>
+            )}
+          </div>
+
+          {/* 4. Auto-Update Checker & Loader Style */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="p-4 bg-slate-950 border border-slate-800 rounded-xl space-y-2">
+              <label className="flex items-center justify-between cursor-pointer">
+                <div>
+                  <div className="text-xs font-bold text-white flex items-center gap-1.5">
+                    <RefreshCw className="w-4 h-4 text-sky-400" />
+                    <span>Auto-Update & Version Enforcement</span>
+                  </div>
+                  <div className="text-[11px] text-slate-400">Cek update otomatis dari URL JSON server Anda.</div>
+                </div>
+                <input
+                  type="checkbox"
+                  checked={config.enableAutoUpdate}
+                  onChange={(e) => onChangeConfig({ enableAutoUpdate: e.target.checked })}
+                  className="w-4 h-4 accent-sky-500"
+                />
+              </label>
+              {config.enableAutoUpdate && (
+                <input
+                  type="text"
+                  value={config.updateCheckUrl}
+                  onChange={(e) => onChangeConfig({ updateCheckUrl: e.target.value })}
+                  className="w-full px-3 py-2 bg-slate-900 border border-slate-700 rounded-xl text-white text-xs font-mono mt-2"
+                  placeholder="https://api.domain.com/version.json"
+                />
+              )}
+            </div>
+
+            <div className="p-4 bg-slate-950 border border-slate-800 rounded-xl space-y-2">
+              <label className="block text-xs font-bold text-white mb-1 flex items-center gap-1.5">
+                <Sparkles className="w-4 h-4 text-sky-400" />
+                <span>Style Loading Indicator (Page Spinner)</span>
+              </label>
+              <select
+                value={config.loadingSpinnerType}
+                onChange={(e) => onChangeConfig({ loadingSpinnerType: e.target.value as any })}
+                className="w-full px-3 py-2 bg-slate-900 border border-slate-700 rounded-xl text-white text-xs focus:outline-none focus:ring-2 focus:ring-sky-500"
+              >
+                <option value="pulse">Pulse Glowing Logo</option>
+                <option value="ring">Dual Ring Spinner</option>
+                <option value="dots">Chasing Dots</option>
+                <option value="bar">Linear Progress Line (Top)</option>
+              </select>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* TAB 4: PERMISSIONS */}
+      {activeTab === 'permissions' && (
+        <div className="space-y-3">
+          <p className="text-xs text-slate-400 mb-2">
+            Aktifkan izin native yang dibutuhkan oleh website Anda. Web2App akan otomatis memasukkan rincian izin di AndroidManifest.xml dan Info.plist.
+          </p>
+
+          <label className="flex items-center justify-between p-3.5 bg-slate-950 border border-slate-800 rounded-xl cursor-pointer">
+            <div className="flex items-center gap-3">
+              <Camera className="w-5 h-5 text-sky-400" />
+              <div>
+                <div className="text-xs font-bold text-white">Kamera (Camera)</div>
+                <div className="text-[11px] text-slate-400">Upload foto profil, scan QR code, atau video call.</div>
+              </div>
+            </div>
+            <input
+              type="checkbox"
+              checked={config.permissions.camera}
+              onChange={() => handlePermissionToggle('camera')}
+              className="w-4 h-4 accent-sky-500"
+            />
+          </label>
+
+          <label className="flex items-center justify-between p-3.5 bg-slate-950 border border-slate-800 rounded-xl cursor-pointer">
+            <div className="flex items-center gap-3">
+              <MapPin className="w-5 h-5 text-emerald-400" />
+              <div>
+                <div className="text-xs font-bold text-white">Lokasi (Location GPS)</div>
+                <div className="text-[11px] text-slate-400">Fitur peta, alamat pengiriman, atau deteksi wilayah.</div>
+              </div>
+            </div>
+            <input
+              type="checkbox"
+              checked={config.permissions.location}
+              onChange={() => handlePermissionToggle('location')}
+              className="w-4 h-4 accent-sky-500"
+            />
+          </label>
+
+          <label className="flex items-center justify-between p-3.5 bg-slate-950 border border-slate-800 rounded-xl cursor-pointer">
+            <div className="flex items-center gap-3">
+              <Bell className="w-5 h-5 text-purple-400" />
+              <div>
+                <div className="text-xs font-bold text-white">Notifikasi Push (Notifications)</div>
+                <div className="text-[11px] text-slate-400">Kirim pemberitahuan promo, update, dan pesan baru.</div>
+              </div>
+            </div>
+            <input
+              type="checkbox"
+              checked={config.permissions.notifications}
+              onChange={() => handlePermissionToggle('notifications')}
+              className="w-4 h-4 accent-sky-500"
+            />
+          </label>
+
+          <label className="flex items-center justify-between p-3.5 bg-slate-950 border border-slate-800 rounded-xl cursor-pointer">
+            <div className="flex items-center gap-3">
+              <Folder className="w-5 h-5 text-amber-400" />
+              <div>
+                <div className="text-xs font-bold text-white">Penyimpanan / Unduhan (Storage)</div>
+                <div className="text-[11px] text-slate-400">Unduh file, dokumen PDF, dan gambar dari WebView.</div>
+              </div>
+            </div>
+            <input
+              type="checkbox"
+              checked={config.permissions.storage}
+              onChange={() => handlePermissionToggle('storage')}
+              className="w-4 h-4 accent-sky-500"
+            />
+          </label>
+        </div>
+      )}
+
+      {/* TAB 5: MULTI PLATFORM TARGETS */}
+      {activeTab === 'platforms' && (
+        <div className="space-y-3">
+          <p className="text-xs text-slate-400 mb-2">
+            Dengan Flutter, satu kode basis `main.dart` yang kami hasilkan dapat langsung dikompilasi ke 6 platform berikut:
+          </p>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
+            {[
+              { id: 'android', name: 'Android APK / Bundle', icon: <Smartphone className="w-4 h-4 text-emerald-400" /> },
+              { id: 'ios', name: 'iOS App Store', icon: <Smartphone className="w-4 h-4 text-purple-400" /> },
+              { id: 'web', name: 'Flutter Web / PWA', icon: <Globe className="w-4 h-4 text-indigo-400" /> },
+              { id: 'windows', name: 'Windows Desktop', icon: <Monitor className="w-4 h-4 text-sky-400" /> },
+              { id: 'macos', name: 'macOS Desktop', icon: <Laptop className="w-4 h-4 text-slate-300" /> },
+              { id: 'linux', name: 'Linux Desktop', icon: <Terminal className="w-4 h-4 text-amber-400" /> },
+            ].map((p) => (
+              <label
+                key={p.id}
+                className="flex items-center justify-between p-3 bg-slate-950 border border-slate-800 rounded-xl cursor-pointer"
+              >
+                <div className="flex items-center gap-2">
+                  {p.icon}
+                  <span className="text-xs font-bold text-white">{p.name}</span>
+                </div>
+                <input
+                  type="checkbox"
+                  checked={
+                    config.supportedPlatforms[p.id as keyof AppConfig['supportedPlatforms']]
+                  }
+                  onChange={() =>
+                    handlePlatformToggle(p.id as keyof AppConfig['supportedPlatforms'])
+                  }
+                  className="w-4 h-4 accent-sky-500"
+                />
+              </label>
+            ))}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+};

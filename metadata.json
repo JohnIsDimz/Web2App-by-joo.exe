@@ -1,0 +1,6 @@
+{
+  "name": "Web2App by joo.exe",
+  "description": "Convert any website into a high-performance multi-platform Flutter app with live simulator, native feature configuration, and complete Flutter source code export.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
