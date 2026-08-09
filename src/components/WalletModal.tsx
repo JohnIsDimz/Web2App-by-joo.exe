@@ -451,10 +451,65 @@ export const WalletModal: React.FC<WalletModalProps> = ({
                 </p>
               </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 pt-2">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 pt-2">
                 
+                {/* PLAN 0: FREE (Rp 0 / Gratis) */}
+                <div className={`p-4 sm:p-5 rounded-2xl bg-slate-950 border transition-all flex flex-col justify-between relative ${
+                  !currentPlan || currentPlan === 'Free' ? 'border-emerald-500 ring-2 ring-emerald-500/20' : 'border-slate-800 hover:border-slate-700'
+                }`}>
+                  <div>
+                    <div className="flex items-center justify-between mb-2">
+                      <span className="text-xs font-bold text-emerald-400 uppercase tracking-wider">Gratis / Free</span>
+                      <span className="text-[10px] bg-emerald-500/20 text-emerald-300 px-2 py-0.5 rounded-full font-bold">Rp 0</span>
+                    </div>
+
+                    <div className="my-3">
+                      <span className="text-2xl font-black text-white">Rp 0</span>
+                      <span className="text-xs text-slate-400"> / selamanya</span>
+                    </div>
+
+                    <div className="text-[11px] font-semibold text-slate-400 mb-2 border-b border-slate-800 pb-1">
+                      Akses Fitur & Batasan Paket:
+                    </div>
+
+                    <ul className="space-y-2 text-xs text-slate-300 mb-6">
+                      <li className="flex items-center gap-2">
+                        <Check className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
+                        <span><strong>Engine PWA Standalone</strong> Gratis</span>
+                      </li>
+                      <li className="flex items-center gap-2">
+                        <Check className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
+                        <span>Analisa URL & Live App Preview</span>
+                      </li>
+                      <li className="flex items-center gap-2">
+                        <Check className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
+                        <span>SSL Proxy Auto HTTPS</span>
+                      </li>
+                      <li className="flex items-center gap-2 text-slate-500">
+                        <X className="w-3.5 h-3.5 shrink-0 text-rose-400" />
+                        <span>0 Token Awal (Perlu Top Up / Beli Token)</span>
+                      </li>
+                      <li className="flex items-center gap-2 text-slate-500">
+                        <X className="w-3.5 h-3.5 shrink-0 text-rose-400" />
+                        <span>Engine Native (Android/iOS) Terkunci</span>
+                      </li>
+                      <li className="flex items-center gap-2 text-slate-500">
+                        <X className="w-3.5 h-3.5 shrink-0 text-rose-400" />
+                        <span>Download Source Code ZIP Terkunci</span>
+                      </li>
+                    </ul>
+                  </div>
+
+                  <button
+                    disabled={true}
+                    className="w-full py-2.5 rounded-xl font-bold text-xs bg-slate-900 text-slate-400 border border-slate-800 cursor-default"
+                  >
+                    {!currentPlan || currentPlan === 'Free' ? 'Paket Aktif Saat Ini' : 'Paket Standar'}
+                  </button>
+                </div>
+
                 {/* PLAN 1: STARTER (Rp 15.000 / Bulan) */}
-                <div className={`p-5 rounded-2xl bg-slate-950 border transition-all flex flex-col justify-between relative ${
+                <div className={`p-4 sm:p-5 rounded-2xl bg-slate-950 border transition-all flex flex-col justify-between relative ${
                   currentPlan === 'Starter' ? 'border-sky-500 ring-2 ring-sky-500/20' : 'border-slate-800 hover:border-slate-700'
                 }`}>
                   <div>
@@ -468,30 +523,30 @@ export const WalletModal: React.FC<WalletModalProps> = ({
                       <span className="text-xs text-slate-400"> / bulan</span>
                     </div>
 
-                    <div className="text-[11px] font-semibold text-slate-400 mb-2 border-b border-slate-800 pb-1">
+                    <div className="text-[11px] font-semibold text-sky-400/90 mb-2 border-b border-slate-800 pb-1">
                       Akses Fitur & Batasan Paket:
                     </div>
 
                     <ul className="space-y-2 text-xs text-slate-300 mb-6">
                       <li className="flex items-center gap-2">
                         <Check className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
-                        <span><strong>10 Token Build</strong> / bulan</span>
+                        <span><strong>20 Token Build</strong> / bulan</span>
                       </li>
                       <li className="flex items-center gap-2">
                         <Check className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
-                        <span>PWA Standalone & Basic WebView Engine</span>
+                        <span><strong>Engine Starter</strong> (Android, iOS, Cordova, PWA)</span>
+                      </li>
+                      <li className="flex items-center gap-2">
+                        <Check className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
+                        <span>Push Notification & SSL Proxy</span>
                       </li>
                       <li className="flex items-center gap-2 text-slate-500">
                         <X className="w-3.5 h-3.5 shrink-0 text-rose-400" />
-                        <span>Fitur Rekomendasi (Flutter, KMP, HarmonyOS) Terkunci</span>
+                        <span>Engine Flutter, Jetpack, Swift, Tauri (Perlu 30k)</span>
                       </li>
                       <li className="flex items-center gap-2 text-slate-500">
                         <X className="w-3.5 h-3.5 shrink-0 text-rose-400" />
-                        <span>Custom CSS & JavaScript Injections Terkunci</span>
-                      </li>
-                      <li className="flex items-center gap-2 text-slate-500">
-                        <X className="w-3.5 h-3.5 shrink-0 text-rose-400" />
-                        <span>Push Notification & Native Permissions Terkunci</span>
+                        <span>Custom CSS & JS Injections Terkunci</span>
                       </li>
                       <li className="flex items-center gap-2 text-slate-500">
                         <X className="w-3.5 h-3.5 shrink-0 text-rose-400" />
@@ -513,8 +568,8 @@ export const WalletModal: React.FC<WalletModalProps> = ({
                   </button>
                 </div>
 
-                {/* PLAN 2: PRO BUILDER (Rp 30.000 / Bulan - MOST POPULAR & FULL ENGINE ACCESS) */}
-                <div className={`p-5 rounded-2xl bg-slate-950 border transition-all flex flex-col justify-between relative ${
+                {/* PLAN 2: PRO BUILDER (Rp 30.000 / Bulan - MOST POPULAR) */}
+                <div className={`p-4 sm:p-5 rounded-2xl bg-slate-950 border transition-all flex flex-col justify-between relative ${
                   currentPlan === 'Pro' ? 'border-amber-500 ring-2 ring-amber-500/20' : 'border-amber-500/50 hover:border-amber-400'
                 }`}>
                   <div className="absolute -top-3 left-1/2 -translate-x-1/2 px-3 py-0.5 bg-gradient-to-r from-amber-500 to-orange-500 text-slate-950 font-black text-[10px] rounded-full uppercase tracking-wider shadow">
@@ -533,17 +588,17 @@ export const WalletModal: React.FC<WalletModalProps> = ({
                     </div>
 
                     <div className="text-[11px] font-semibold text-amber-400/90 mb-2 border-b border-slate-800 pb-1">
-                      Akses Seimbang (Balanced Tier):
+                      Akses Fitur & Batasan Paket:
                     </div>
 
                     <ul className="space-y-2 text-xs text-slate-300 mb-6">
                       <li className="flex items-center gap-2">
                         <Check className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
-                        <span><strong>50 Token Build</strong> / bulan</span>
+                        <span><strong>60 Token Build</strong> / bulan</span>
                       </li>
                       <li className="flex items-center gap-2">
                         <Check className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
-                        <span><strong>Akses Flutter, Kotlin, Swift & React Native</strong></span>
+                        <span><strong>Flutter 3.x, Kotlin, Swift, React Native, Tauri</strong></span>
                       </li>
                       <li className="flex items-center gap-2">
                         <Check className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
@@ -555,11 +610,11 @@ export const WalletModal: React.FC<WalletModalProps> = ({
                       </li>
                       <li className="flex items-center gap-2">
                         <Check className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
-                        <span>Push Notifications (Basic OneSignal)</span>
+                        <span>Push Notifications (OneSignal API)</span>
                       </li>
                       <li className="flex items-center gap-2 text-slate-500">
                         <X className="w-3.5 h-3.5 shrink-0 text-rose-400" />
-                        <span>KMP, HarmonyOS, & Custom Native Plugins (Perlu Enterprise 60k)</span>
+                        <span>KMP, HarmonyOS, & Native Plugins (Perlu 60k)</span>
                       </li>
                     </ul>
                   </div>
@@ -578,7 +633,7 @@ export const WalletModal: React.FC<WalletModalProps> = ({
                 </div>
 
                 {/* PLAN 3: ENTERPRISE (Rp 60.000 / Bulan - UNLIMITED VIP) */}
-                <div className={`p-5 rounded-2xl bg-slate-950 border transition-all flex flex-col justify-between relative ${
+                <div className={`p-4 sm:p-5 rounded-2xl bg-slate-950 border transition-all flex flex-col justify-between relative ${
                   currentPlan === 'Enterprise' ? 'border-purple-500 ring-2 ring-purple-500/20' : 'border-slate-800 hover:border-slate-700'
                 }`}>
                   <div>
@@ -593,33 +648,33 @@ export const WalletModal: React.FC<WalletModalProps> = ({
                     </div>
 
                     <div className="text-[11px] font-semibold text-purple-400/90 mb-2 border-b border-slate-800 pb-1">
-                      Akses Lengkap Tanpa Batasan (60k Full Unlocked):
+                      Akses Fitur & Batasan Paket:
                     </div>
 
                     <ul className="space-y-2 text-xs text-slate-300 mb-6">
                       <li className="flex items-center gap-2">
                         <Check className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
-                        <span><strong>150 Token Build</strong> / bulan + VIP Priority Queue</span>
+                        <span><strong>150 Token Build</strong> / bln + VIP Priority Queue</span>
                       </li>
                       <li className="flex items-center gap-2">
                         <Check className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
-                        <span><strong>Akses SEMUA Multi-Engine</strong> (KMP, Flutter, HarmonyOS, React Native, Electron)</span>
+                        <span><strong>Akses SEMUA Multi-Engine</strong> (KMP, HarmonyOS, Electron, Flutter)</span>
                       </li>
                       <li className="flex items-center gap-2">
                         <Check className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
-                        <span>Custom C++/Rust Native Plugins & Code Ingestion</span>
+                        <span>Custom C++/Rust Native Plugins</span>
                       </li>
                       <li className="flex items-center gap-2">
                         <Check className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
-                        <span>Unlimited Release APK/AAB Builds & ZIP Export</span>
+                        <span>Unlimited Release Builds & ZIP Export</span>
                       </li>
                       <li className="flex items-center gap-2">
                         <Check className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
-                        <span>Pterodactyl VPS Dedicated Compiler Node</span>
+                        <span>Pterodactyl Dedicated VPS Compiler</span>
                       </li>
                       <li className="flex items-center gap-2">
                         <Check className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
-                        <span>White-label Custom App Branding & Package ID</span>
+                        <span>White-label Custom App Branding</span>
                       </li>
                     </ul>
                   </div>

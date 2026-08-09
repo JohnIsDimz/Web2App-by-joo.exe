@@ -52,10 +52,12 @@ export const Configurator: React.FC<ConfiguratorProps> = ({
   const userPlan = userProfile?.subscriptionPlan || 'Free';
   const isVIP = userProfile?.isAdmin || userPlan === 'Enterprise';
   const isProOrVIP = isVIP || userPlan === 'Pro';
+  const isStarterOrHigher = isProOrVIP || userPlan === 'Starter';
 
   const handleSelectEngine = (engine: AppConfig['engineType']) => {
     const isEnterpriseOnly = ['kmp', 'turbo-native', 'harmony-os', 'electron-pro'].includes(engine);
     const isProOrHigher = ['flutter', 'kotlin', 'swift', 'capacitor', 'react-native', 'tauri'].includes(engine);
+    const isStarterEngine = ['android-webview', 'ios-webview', 'cordova'].includes(engine);
 
     if (isEnterpriseOnly && !isVIP) {
       alert(`Engine ${engine.toUpperCase()} adalah fitur eksklusif Paket Enterprise VIP (Rp 60.000 / bulan). Silakan tingkatkan paket di Dompet.`);
@@ -64,7 +66,13 @@ export const Configurator: React.FC<ConfiguratorProps> = ({
     }
 
     if (isProOrHigher && !isProOrVIP) {
-      alert(`Engine ${engine.toUpperCase()} memerlukan Paket Pro Builder (Rp 30.000 / bulan) atau Enterprise VIP. Engine PWA Standalone dapat digunakan secara Gratis!`);
+      alert(`Engine ${engine.toUpperCase()} memerlukan Paket Pro Builder (Rp 30.000 / bulan) atau Enterprise VIP.`);
+      onOpenWalletModal();
+      return;
+    }
+
+    if (isStarterEngine && !isStarterOrHigher) {
+      alert(`Engine ${engine.toUpperCase()} memerlukan Paket Starter (Rp 15.000 / bulan) atau lebih tinggi. Engine PWA Standalone dapat digunakan secara Gratis!`);
       onOpenWalletModal();
       return;
     }
@@ -259,7 +267,23 @@ export const Configurator: React.FC<ConfiguratorProps> = ({
               Pilih mesin pendorong utama yang akan mengeksekusi aplikasi web Anda secara native di perangkat mobile & desktop.
             </p>
 
-            {!isProOrVIP && ['kmp', 'turbo-native', 'harmony-os', 'electron-pro', 'tauri'].includes(config.engineType) && (
+            {!isVIP && ['kmp', 'turbo-native', 'harmony-os', 'electron-pro'].includes(config.engineType) && (
+              <div className="p-3.5 bg-purple-500/10 border border-purple-500/30 rounded-xl text-purple-200 text-xs flex items-center justify-between gap-3 mb-4">
+                <div className="flex items-center gap-2">
+                  <Lock className="w-4 h-4 text-purple-400 shrink-0" />
+                  <span>Engine <strong>{config.engineType.toUpperCase()}</strong> adalah fitur eksklusif paket <strong>Enterprise VIP (Rp 60.000)</strong>.</span>
+                </div>
+                <button
+                  type="button"
+                  onClick={onOpenWalletModal}
+                  className="px-3.5 py-1.5 bg-purple-600 hover:bg-purple-500 text-white font-bold text-xs rounded-lg shadow shrink-0 transition-all cursor-pointer"
+                >
+                  Upgrade Rp 60.000
+                </button>
+              </div>
+            )}
+
+            {!isProOrVIP && ['flutter', 'kotlin', 'swift', 'capacitor', 'react-native', 'tauri'].includes(config.engineType) && (
               <div className="p-3.5 bg-amber-500/10 border border-amber-500/30 rounded-xl text-amber-200 text-xs flex items-center justify-between gap-3 mb-4">
                 <div className="flex items-center gap-2">
                   <Lock className="w-4 h-4 text-amber-400 shrink-0" />
@@ -275,292 +299,444 @@ export const Configurator: React.FC<ConfiguratorProps> = ({
               </div>
             )}
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <button
-                type="button"
-                onClick={() => handleSelectEngine('flutter')}
-                className={`p-4 rounded-xl border text-left transition-all ${
-                  config.engineType === 'flutter'
-                    ? 'bg-sky-500/20 border-sky-500 text-white ring-1 ring-sky-500'
-                    : 'bg-slate-950 border-slate-800 text-slate-400 hover:text-white'
-                }`}
-              >
-                <div className="flex items-center justify-between mb-2">
-                  <span className="font-bold text-sm text-sky-400 flex items-center gap-1.5">
-                    <Zap className="w-4 h-4 text-sky-400" />
-                    <span>Flutter 3.x Engine (Rekomendasi)</span>
-                  </span>
-                  <span className="text-[10px] bg-amber-500/20 text-amber-300 border border-amber-500/30 px-2 py-0.5 rounded-full font-bold">Pro 30k</span>
+            {!isStarterOrHigher && ['android-webview', 'ios-webview', 'cordova'].includes(config.engineType) && (
+              <div className="p-3.5 bg-sky-500/10 border border-sky-500/30 rounded-xl text-sky-200 text-xs flex items-center justify-between gap-3 mb-4">
+                <div className="flex items-center gap-2">
+                  <Lock className="w-4 h-4 text-sky-400 shrink-0" />
+                  <span>Engine <strong>{config.engineType.toUpperCase()}</strong> memerlukan paket <strong>Starter (Rp 15.000)</strong>, <strong>Pro Builder</strong>, atau <strong>Enterprise VIP</strong>.</span>
                 </div>
-                <p className="text-xs text-slate-300 mb-2">
-                  Menggunakan `webview_flutter` versi terbaru, hardware acceleration GPU, smart cache, and multi-platform compilation (Android, iOS, Web, Desktop).
-                </p>
-                <div className="text-[11px] text-slate-400 flex items-center gap-2">
-                  <span className="flex items-center gap-1"><Check className="w-3 h-3 text-sky-400" /> Pull-to-refresh</span>
-                  <span className="flex items-center gap-1"><Check className="w-3 h-3 text-sky-400" /> Hardware Back Button</span>
-                  <span className="flex items-center gap-1"><Check className="w-3 h-3 text-sky-400" /> JS Bridge</span>
-                </div>
-              </button>
+                <button
+                  type="button"
+                  onClick={onOpenWalletModal}
+                  className="px-3.5 py-1.5 bg-sky-500 hover:bg-sky-400 text-slate-950 font-bold text-xs rounded-lg shadow shrink-0 transition-all cursor-pointer"
+                >
+                  Upgrade Rp 15.000
+                </button>
+              </div>
+            )}
 
-              <button
-                type="button"
-                onClick={() => handleSelectEngine('kotlin')}
-                className={`p-4 rounded-xl border text-left transition-all ${
-                  config.engineType === 'kotlin'
-                    ? 'bg-emerald-500/20 border-emerald-500 text-white ring-1 ring-emerald-500'
-                    : 'bg-slate-950 border-slate-800 text-slate-400 hover:text-white'
-                }`}
-              >
-                <div className="flex items-center justify-between mb-2">
-                  <span className="font-bold text-sm text-emerald-400 flex items-center gap-1.5">
-                    <Smartphone className="w-4 h-4 text-emerald-400" />
-                    <span>Android Jetpack Compose</span>
-                  </span>
-                  <span className="text-[10px] bg-amber-500/20 text-amber-300 border border-amber-500/30 px-2 py-0.5 rounded-full font-bold">Pro 30k</span>
-                </div>
-                <p className="text-xs text-slate-300 mb-2">
-                  Kotlin + AndroidX WebKit + Material3 Design. Ukuran APK sangat kecil dan dioptimalkan khusus untuk ekosistem Android.
-                </p>
-                <div className="text-[11px] text-slate-400 flex items-center gap-2">
-                  <span className="flex items-center gap-1"><Check className="w-3 h-3 text-emerald-400" /> AndroidX WebKit</span>
-                  <span className="flex items-center gap-1"><Check className="w-3 h-3 text-emerald-400" /> Splash API</span>
-                  <span className="flex items-center gap-1"><Check className="w-3 h-3 text-emerald-400" /> Native Intent</span>
-                </div>
-              </button>
+            <div className="space-y-6">
 
-              <button
-                type="button"
-                onClick={() => handleSelectEngine('swift')}
-                className={`p-4 rounded-xl border text-left transition-all ${
-                  config.engineType === 'swift'
-                    ? 'bg-purple-500/20 border-purple-500 text-white ring-1 ring-purple-500'
-                    : 'bg-slate-950 border-slate-800 text-slate-400 hover:text-white'
-                }`}
-              >
-                <div className="flex items-center justify-between mb-2">
-                  <span className="font-bold text-sm text-purple-400 flex items-center gap-1.5">
-                    <Smartphone className="w-4 h-4 text-purple-400" />
-                    <span>iOS Swift / SwiftUI</span>
+              {/* TIER 0: FREE ENGINES (Rp 0) */}
+              <div className="space-y-2">
+                <div className="flex items-center justify-between px-1">
+                  <span className="text-xs font-bold text-emerald-400 uppercase tracking-wider flex items-center gap-1.5">
+                    <Globe className="w-4 h-4 text-emerald-400" />
+                    <span>1. Gratis / Free Engine (Rp 0)</span>
                   </span>
-                  <span className="text-[10px] bg-amber-500/20 text-amber-300 border border-amber-500/30 px-2 py-0.5 rounded-full font-bold">Pro 30k</span>
+                  <span className="text-[10px] bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 px-2.5 py-0.5 rounded-full font-bold">
+                    Tanpa Langganan
+                  </span>
                 </div>
-                <p className="text-xs text-slate-300 mb-2">
-                  SwiftUI + WKWebView + Apple Push Notification Service (APNS). Performa 60FPS murni untuk iPhone & iPad.
-                </p>
-                <div className="text-[11px] text-slate-400 flex items-center gap-2">
-                  <span className="flex items-center gap-1"><Check className="w-3 h-3 text-purple-400" /> WKWebView</span>
-                  <span className="flex items-center gap-1"><Check className="w-3 h-3 text-purple-400" /> iOS Swipe Back</span>
-                  <span className="flex items-center gap-1"><Check className="w-3 h-3 text-purple-400" /> Safari Engine</span>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                  <button
+                    type="button"
+                    onClick={() => handleSelectEngine('pwa-shell')}
+                    className={`p-4 rounded-xl border text-left transition-all ${
+                      config.engineType === 'pwa-shell'
+                        ? 'bg-emerald-500/20 border-emerald-500 text-white ring-1 ring-emerald-500'
+                        : 'bg-slate-950 border-slate-800 text-slate-400 hover:text-white'
+                    }`}
+                  >
+                    <div className="flex items-center justify-between mb-2">
+                      <span className="font-bold text-sm text-emerald-400 flex items-center gap-1.5">
+                        <Globe className="w-4 h-4 text-emerald-400" />
+                        <span>PWA Standalone WebShell</span>
+                      </span>
+                      <span className="text-[10px] bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 px-2 py-0.5 rounded-full font-bold">Gratis / Free</span>
+                    </div>
+                    <p className="text-xs text-slate-300 mb-2">
+                      Manifest V3 Progressive Web App dengan Workbox Service Worker offline caching. Tanpa butuh SDK Android/iOS.
+                    </p>
+                    <div className="text-[11px] text-slate-400 flex items-center gap-2">
+                      <span className="flex items-center gap-1"><Check className="w-3 h-3 text-emerald-400" /> Installable App</span>
+                      <span className="flex items-center gap-1"><Check className="w-3 h-3 text-emerald-400" /> Offline Cache</span>
+                      <span className="flex items-center gap-1"><Check className="w-3 h-3 text-emerald-400" /> Zero-SDK Needed</span>
+                    </div>
+                  </button>
                 </div>
-              </button>
+              </div>
 
-              <button
-                type="button"
-                onClick={() => handleSelectEngine('capacitor')}
-                className={`p-4 rounded-xl border text-left transition-all ${
-                  config.engineType === 'capacitor'
-                    ? 'bg-amber-500/20 border-amber-500 text-white ring-1 ring-amber-500'
-                    : 'bg-slate-950 border-slate-800 text-slate-400 hover:text-white'
-                }`}
-              >
-                <div className="flex items-center justify-between mb-2">
-                  <span className="font-bold text-sm text-amber-400 flex items-center gap-1.5">
-                    <Layers className="w-4 h-4 text-amber-400" />
-                    <span>Capacitor / PWA Hybrid</span>
+              {/* TIER 1: STARTER ENGINES (Rp 15.000 / Bulan) */}
+              <div className="space-y-2 pt-2 border-t border-slate-800/80">
+                <div className="flex items-center justify-between px-1">
+                  <span className="text-xs font-bold text-sky-400 uppercase tracking-wider flex items-center gap-1.5">
+                    <Smartphone className="w-4 h-4 text-sky-400" />
+                    <span>2. Paket Starter (Rp 15.000 / Bulan)</span>
                   </span>
-                  <span className="text-[10px] bg-amber-500/20 text-amber-300 border border-amber-500/30 px-2 py-0.5 rounded-full font-bold">Pro 30k</span>
+                  <span className="text-[10px] bg-sky-500/20 text-sky-300 border border-sky-500/30 px-2.5 py-0.5 rounded-full font-bold">
+                    Starter Tier
+                  </span>
                 </div>
-                <p className="text-xs text-slate-300 mb-2">
-                  Capacitor 6.x runtime dengan Service Worker caching dan akses penuh ke Native Plugins web JS.
-                </p>
-                <div className="text-[11px] text-slate-400 flex items-center gap-2">
-                  <span className="flex items-center gap-1"><Check className="w-3 h-3 text-amber-400" /> Offline SW</span>
-                  <span className="flex items-center gap-1"><Check className="w-3 h-3 text-amber-400" /> Web Plugins</span>
-                  <span className="flex items-center gap-1"><Check className="w-3 h-3 text-amber-400" /> Cross-Platform</span>
-                </div>
-              </button>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                  <button
+                    type="button"
+                    onClick={() => handleSelectEngine('android-webview')}
+                    className={`p-4 rounded-xl border text-left transition-all ${
+                      config.engineType === 'android-webview'
+                        ? 'bg-sky-500/20 border-sky-500 text-white ring-1 ring-sky-500'
+                        : 'bg-slate-950 border-slate-800 text-slate-400 hover:text-white'
+                    }`}
+                  >
+                    <div className="flex items-center justify-between mb-2">
+                      <span className="font-bold text-sm text-sky-400 flex items-center gap-1.5">
+                        <Smartphone className="w-4 h-4 text-sky-400" />
+                        <span>Basic Android WebView Shell</span>
+                      </span>
+                      <span className="text-[10px] bg-sky-500/20 text-sky-300 border border-sky-500/30 px-2 py-0.5 rounded-full font-bold">Starter 15k</span>
+                    </div>
+                    <p className="text-xs text-slate-300 mb-2">
+                      Wadah aplikasi native Android dengan WebView AndroidX, splash screen, & integrasi URL utama.
+                    </p>
+                    <div className="text-[11px] text-slate-400 flex items-center gap-2">
+                      <span className="flex items-center gap-1"><Check className="w-3 h-3 text-sky-400" /> Native APK Wrapper</span>
+                      <span className="flex items-center gap-1"><Check className="w-3 h-3 text-sky-400" /> Splash Screen</span>
+                      <span className="flex items-center gap-1"><Check className="w-3 h-3 text-sky-400" /> Ringan & Cepat</span>
+                    </div>
+                  </button>
 
-              <button
-                type="button"
-                onClick={() => handleSelectEngine('react-native')}
-                className={`p-4 rounded-xl border text-left transition-all ${
-                  config.engineType === 'react-native'
-                    ? 'bg-cyan-500/20 border-cyan-500 text-white ring-1 ring-cyan-500'
-                    : 'bg-slate-950 border-slate-800 text-slate-400 hover:text-white'
-                }`}
-              >
-                <div className="flex items-center justify-between mb-2">
-                  <span className="font-bold text-sm text-cyan-400 flex items-center gap-1.5">
-                    <Code className="w-4 h-4 text-cyan-400" />
-                    <span>React Native / Expo Engine</span>
-                  </span>
-                  <span className="text-[10px] bg-amber-500/20 text-amber-300 border border-amber-500/30 px-2 py-0.5 rounded-full font-bold">Pro 30k</span>
-                </div>
-                <p className="text-xs text-slate-300 mb-2">
-                  React Native 0.74 + Expo Webview shell. Dioptimalkan untuk kompatibilitas JavaScript modern dan Fast Refresh.
-                </p>
-                <div className="text-[11px] text-slate-400 flex items-center gap-2">
-                  <span className="flex items-center gap-1"><Check className="w-3 h-3 text-cyan-400" /> Expo Webview</span>
-                  <span className="flex items-center gap-1"><Check className="w-3 h-3 text-cyan-400" /> React Hooks Bridge</span>
-                  <span className="flex items-center gap-1"><Check className="w-3 h-3 text-cyan-400" /> Universal JS</span>
-                </div>
-              </button>
+                  <button
+                    type="button"
+                    onClick={() => handleSelectEngine('ios-webview')}
+                    className={`p-4 rounded-xl border text-left transition-all ${
+                      config.engineType === 'ios-webview'
+                        ? 'bg-sky-500/20 border-sky-500 text-white ring-1 ring-sky-500'
+                        : 'bg-slate-950 border-slate-800 text-slate-400 hover:text-white'
+                    }`}
+                  >
+                    <div className="flex items-center justify-between mb-2">
+                      <span className="font-bold text-sm text-sky-400 flex items-center gap-1.5">
+                        <Smartphone className="w-4 h-4 text-sky-400" />
+                        <span>Basic iOS WKWebView Wrapper</span>
+                      </span>
+                      <span className="text-[10px] bg-sky-500/20 text-sky-300 border border-sky-500/30 px-2 py-0.5 rounded-full font-bold">Starter 15k</span>
+                    </div>
+                    <p className="text-xs text-slate-300 mb-2">
+                      Kontainer Swift WKWebView ringan khusus iOS dengan penanganan navigasi & penjelajahan aman.
+                    </p>
+                    <div className="text-[11px] text-slate-400 flex items-center gap-2">
+                      <span className="flex items-center gap-1"><Check className="w-3 h-3 text-sky-400" /> iOS Swift Shell</span>
+                      <span className="flex items-center gap-1"><Check className="w-3 h-3 text-sky-400" /> WKWebView 60FPS</span>
+                      <span className="flex items-center gap-1"><Check className="w-3 h-3 text-sky-400" /> Minimal Memory</span>
+                    </div>
+                  </button>
 
-              <button
-                type="button"
-                onClick={() => handleSelectEngine('tauri')}
-                className={`p-4 rounded-xl border text-left transition-all ${
-                  config.engineType === 'tauri'
-                    ? 'bg-rose-500/20 border-rose-500 text-white ring-1 ring-rose-500'
-                    : 'bg-slate-950 border-slate-800 text-slate-400 hover:text-white'
-                }`}
-              >
-                <div className="flex items-center justify-between mb-2">
-                  <span className="font-bold text-sm text-rose-400 flex items-center gap-1.5">
-                    <Cpu className="w-4 h-4 text-rose-400" />
-                    <span>Tauri 2.0 Rust Engine</span>
-                  </span>
-                  <span className="text-[10px] bg-amber-500/20 text-amber-300 border border-amber-500/30 px-2 py-0.5 rounded-full font-bold">Pro 30k</span>
+                  <button
+                    type="button"
+                    onClick={() => handleSelectEngine('cordova')}
+                    className={`p-4 rounded-xl border text-left transition-all ${
+                      config.engineType === 'cordova'
+                        ? 'bg-sky-500/20 border-sky-500 text-white ring-1 ring-sky-500'
+                        : 'bg-slate-950 border-slate-800 text-slate-400 hover:text-white'
+                    }`}
+                  >
+                    <div className="flex items-center justify-between mb-2">
+                      <span className="font-bold text-sm text-sky-400 flex items-center gap-1.5">
+                        <Layers className="w-4 h-4 text-sky-400" />
+                        <span>Apache Cordova Hybrid</span>
+                      </span>
+                      <span className="text-[10px] bg-sky-500/20 text-sky-300 border border-sky-500/30 px-2 py-0.5 rounded-full font-bold">Starter 15k</span>
+                    </div>
+                    <p className="text-xs text-slate-300 mb-2">
+                      Kerangka kerja hybrid klasik Apache Cordova untuk bundel web multi-platform (Android & iOS).
+                    </p>
+                    <div className="text-[11px] text-slate-400 flex items-center gap-2">
+                      <span className="flex items-center gap-1"><Check className="w-3 h-3 text-sky-400" /> Cross-Platform</span>
+                      <span className="flex items-center gap-1"><Check className="w-3 h-3 text-sky-400" /> Cordova Plugins</span>
+                      <span className="flex items-center gap-1"><Check className="w-3 h-3 text-sky-400" /> Stable Classic</span>
+                    </div>
+                  </button>
                 </div>
-                <p className="text-xs text-slate-300 mb-2">
-                  Engine Tauri versi 2 (Rust + WebView2/WKWebView). Ukuran executable sangat kecil (&lt; 5MB) dan keamanan tingkat tinggi.
-                </p>
-                <div className="text-[11px] text-slate-400 flex items-center gap-2">
-                  <span className="flex items-center gap-1"><Check className="w-3 h-3 text-rose-400" /> Hardened Memory</span>
-                  <span className="flex items-center gap-1"><Check className="w-3 h-3 text-rose-400" /> Minimal Memory RAM</span>
-                  <span className="flex items-center gap-1"><Check className="w-3 h-3 text-rose-400" /> Cross-Desktop/Mobile</span>
-                </div>
-              </button>
+              </div>
 
-              <button
-                type="button"
-                onClick={() => handleSelectEngine('pwa-shell')}
-                className={`p-4 rounded-xl border text-left transition-all ${
-                  config.engineType === 'pwa-shell'
-                    ? 'bg-indigo-500/20 border-indigo-500 text-white ring-1 ring-indigo-500'
-                    : 'bg-slate-950 border-slate-800 text-slate-400 hover:text-white'
-                }`}
-              >
-                <div className="flex items-center justify-between mb-2">
-                  <span className="font-bold text-sm text-indigo-400 flex items-center gap-1.5">
-                    <Globe className="w-4 h-4 text-indigo-400" />
-                    <span>PWA Standalone WebShell</span>
+              {/* TIER 2: PRO BUILDER ENGINES (Rp 30.000 / Bulan) */}
+              <div className="space-y-2 pt-2 border-t border-slate-800/80">
+                <div className="flex items-center justify-between px-1">
+                  <span className="text-xs font-bold text-amber-400 uppercase tracking-wider flex items-center gap-1.5">
+                    <Zap className="w-4 h-4 text-amber-400" />
+                    <span>3. Paket Pro Builder (Rp 30.000 / Bulan)</span>
                   </span>
-                  <span className="text-[10px] bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 px-2 py-0.5 rounded-full font-bold">Gratis / Free</span>
+                  <span className="text-[10px] bg-amber-500/20 text-amber-300 border border-amber-500/30 px-2.5 py-0.5 rounded-full font-bold">
+                    Paling Populer
+                  </span>
                 </div>
-                <p className="text-xs text-slate-300 mb-2">
-                  Manifest V3 Progressive Web App dengan Workbox Service Worker offline caching. Tanpa butuh SDK Android/iOS.
-                </p>
-                <div className="text-[11px] text-slate-400 flex items-center gap-2">
-                  <span className="flex items-center gap-1"><Check className="w-3 h-3 text-indigo-400" /> Installable App</span>
-                  <span className="flex items-center gap-1"><Check className="w-3 h-3 text-indigo-400" /> Offline Cache</span>
-                  <span className="flex items-center gap-1"><Check className="w-3 h-3 text-indigo-400" /> Zero-SDK Needed</span>
-                </div>
-              </button>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                  <button
+                    type="button"
+                    onClick={() => handleSelectEngine('flutter')}
+                    className={`p-4 rounded-xl border text-left transition-all ${
+                      config.engineType === 'flutter'
+                        ? 'bg-amber-500/20 border-amber-500 text-white ring-1 ring-amber-500'
+                        : 'bg-slate-950 border-slate-800 text-slate-400 hover:text-white'
+                    }`}
+                  >
+                    <div className="flex items-center justify-between mb-2">
+                      <span className="font-bold text-sm text-amber-400 flex items-center gap-1.5">
+                        <Zap className="w-4 h-4 text-amber-400" />
+                        <span>Flutter 3.x Engine (Rekomendasi)</span>
+                      </span>
+                      <span className="text-[10px] bg-amber-500/20 text-amber-300 border border-amber-500/30 px-2 py-0.5 rounded-full font-bold">Pro 30k</span>
+                    </div>
+                    <p className="text-xs text-slate-300 mb-2">
+                      Menggunakan `webview_flutter` versi terbaru, hardware acceleration GPU, smart cache, & multi-platform compilation.
+                    </p>
+                    <div className="text-[11px] text-slate-400 flex items-center gap-2">
+                      <span className="flex items-center gap-1"><Check className="w-3 h-3 text-amber-400" /> Pull-to-refresh</span>
+                      <span className="flex items-center gap-1"><Check className="w-3 h-3 text-amber-400" /> Hardware Back Button</span>
+                      <span className="flex items-center gap-1"><Check className="w-3 h-3 text-amber-400" /> JS Bridge</span>
+                    </div>
+                  </button>
 
-              <button
-                type="button"
-                onClick={() => handleSelectEngine('kmp')}
-                className={`p-4 rounded-xl border text-left transition-all ${
-                  config.engineType === 'kmp'
-                    ? 'bg-purple-500/20 border-purple-500 text-white ring-1 ring-purple-500'
-                    : 'bg-slate-950 border-slate-800 text-slate-400 hover:text-white'
-                }`}
-              >
-                <div className="flex items-center justify-between mb-2">
-                  <span className="font-bold text-sm text-purple-400 flex items-center gap-1.5">
-                    <Zap className="w-4 h-4 text-purple-400" />
-                    <span>Kotlin Multiplatform (KMP)</span>
-                  </span>
-                  <span className="text-[10px] bg-purple-500/20 text-purple-300 border border-purple-500/30 px-2 py-0.5 rounded-full font-bold">Enterprise 60k</span>
-                </div>
-                <p className="text-xs text-slate-300 mb-2">
-                  KMP shared business logic + Compose Multiplatform UI. Performa kompilasi murni LLVM/JVM untuk Android & iOS.
-                </p>
-                <div className="text-[11px] text-slate-400 flex items-center gap-2">
-                  <span className="flex items-center gap-1"><Check className="w-3 h-3 text-purple-400" /> Shared Logic</span>
-                  <span className="flex items-center gap-1"><Check className="w-3 h-3 text-purple-400" /> Compose UI</span>
-                  <span className="flex items-center gap-1"><Check className="w-3 h-3 text-purple-400" /> Native Performance</span>
-                </div>
-              </button>
+                  <button
+                    type="button"
+                    onClick={() => handleSelectEngine('kotlin')}
+                    className={`p-4 rounded-xl border text-left transition-all ${
+                      config.engineType === 'kotlin'
+                        ? 'bg-amber-500/20 border-amber-500 text-white ring-1 ring-amber-500'
+                        : 'bg-slate-950 border-slate-800 text-slate-400 hover:text-white'
+                    }`}
+                  >
+                    <div className="flex items-center justify-between mb-2">
+                      <span className="font-bold text-sm text-amber-400 flex items-center gap-1.5">
+                        <Smartphone className="w-4 h-4 text-amber-400" />
+                        <span>Android Jetpack Compose</span>
+                      </span>
+                      <span className="text-[10px] bg-amber-500/20 text-amber-300 border border-amber-500/30 px-2 py-0.5 rounded-full font-bold">Pro 30k</span>
+                    </div>
+                    <p className="text-xs text-slate-300 mb-2">
+                      Kotlin + AndroidX WebKit + Material3 Design. Ukuran APK sangat kecil dan dioptimalkan khusus untuk ekosistem Android.
+                    </p>
+                    <div className="text-[11px] text-slate-400 flex items-center gap-2">
+                      <span className="flex items-center gap-1"><Check className="w-3 h-3 text-amber-400" /> AndroidX WebKit</span>
+                      <span className="flex items-center gap-1"><Check className="w-3 h-3 text-amber-400" /> Splash API</span>
+                      <span className="flex items-center gap-1"><Check className="w-3 h-3 text-amber-400" /> Native Intent</span>
+                    </div>
+                  </button>
 
-              <button
-                type="button"
-                onClick={() => handleSelectEngine('turbo-native')}
-                className={`p-4 rounded-xl border text-left transition-all ${
-                  config.engineType === 'turbo-native'
-                    ? 'bg-emerald-500/20 border-emerald-500 text-white ring-1 ring-emerald-500'
-                    : 'bg-slate-950 border-slate-800 text-slate-400 hover:text-white'
-                }`}
-              >
-                <div className="flex items-center justify-between mb-2">
-                  <span className="font-bold text-sm text-emerald-400 flex items-center gap-1.5">
-                    <Smartphone className="w-4 h-4 text-emerald-400" />
-                    <span>Hotwire Turbo Native Engine</span>
-                  </span>
-                  <span className="text-[10px] bg-purple-500/20 text-purple-300 border border-purple-500/30 px-2 py-0.5 rounded-full font-bold">Enterprise 60k</span>
-                </div>
-                <p className="text-xs text-slate-300 mb-2">
-                  Engine navigasi Hotwire/Turbo untuk menyatukan halaman web real-time server dengan transisi layar native super mulus.
-                </p>
-                <div className="text-[11px] text-slate-400 flex items-center gap-2">
-                  <span className="flex items-center gap-1"><Check className="w-3 h-3 text-emerald-400" /> Turbo Navigation</span>
-                  <span className="flex items-center gap-1"><Check className="w-3 h-3 text-emerald-400" /> Zero Reload Lag</span>
-                  <span className="flex items-center gap-1"><Check className="w-3 h-3 text-emerald-400" /> Server-Driven</span>
-                </div>
-              </button>
+                  <button
+                    type="button"
+                    onClick={() => handleSelectEngine('swift')}
+                    className={`p-4 rounded-xl border text-left transition-all ${
+                      config.engineType === 'swift'
+                        ? 'bg-amber-500/20 border-amber-500 text-white ring-1 ring-amber-500'
+                        : 'bg-slate-950 border-slate-800 text-slate-400 hover:text-white'
+                    }`}
+                  >
+                    <div className="flex items-center justify-between mb-2">
+                      <span className="font-bold text-sm text-amber-400 flex items-center gap-1.5">
+                        <Smartphone className="w-4 h-4 text-amber-400" />
+                        <span>iOS Swift / SwiftUI</span>
+                      </span>
+                      <span className="text-[10px] bg-amber-500/20 text-amber-300 border border-amber-500/30 px-2 py-0.5 rounded-full font-bold">Pro 30k</span>
+                    </div>
+                    <p className="text-xs text-slate-300 mb-2">
+                      SwiftUI + WKWebView + Apple Push Notification Service (APNS). Performa 60FPS murni untuk iPhone & iPad.
+                    </p>
+                    <div className="text-[11px] text-slate-400 flex items-center gap-2">
+                      <span className="flex items-center gap-1"><Check className="w-3 h-3 text-amber-400" /> WKWebView</span>
+                      <span className="flex items-center gap-1"><Check className="w-3 h-3 text-amber-400" /> iOS Swipe Back</span>
+                      <span className="flex items-center gap-1"><Check className="w-3 h-3 text-amber-400" /> Safari Engine</span>
+                    </div>
+                  </button>
 
-              <button
-                type="button"
-                onClick={() => handleSelectEngine('harmony-os')}
-                className={`p-4 rounded-xl border text-left transition-all ${
-                  config.engineType === 'harmony-os'
-                    ? 'bg-blue-500/20 border-blue-500 text-white ring-1 ring-blue-500'
-                    : 'bg-slate-950 border-slate-800 text-slate-400 hover:text-white'
-                }`}
-              >
-                <div className="flex items-center justify-between mb-2">
-                  <span className="font-bold text-sm text-blue-400 flex items-center gap-1.5">
-                    <Cpu className="w-4 h-4 text-blue-400" />
-                    <span>OpenHarmony (ArkUI Engine)</span>
-                  </span>
-                  <span className="text-[10px] bg-purple-500/20 text-purple-300 border border-purple-500/30 px-2 py-0.5 rounded-full font-bold">Enterprise 60k</span>
-                </div>
-                <p className="text-xs text-slate-300 mb-2">
-                  Mesin ArkUI & WebKit Huawei HarmonyOS NEXT untuk ekosistem perangkat pintar global terbaru.
-                </p>
-                <div className="text-[11px] text-slate-400 flex items-center gap-2">
-                  <span className="flex items-center gap-1"><Check className="w-3 h-3 text-blue-400" /> ArkUI Runtime</span>
-                  <span className="flex items-center gap-1"><Check className="w-3 h-3 text-blue-400" /> Harmony WebKit</span>
-                  <span className="flex items-center gap-1"><Check className="w-3 h-3 text-blue-400" /> HarmonyOS NEXT</span>
-                </div>
-              </button>
+                  <button
+                    type="button"
+                    onClick={() => handleSelectEngine('capacitor')}
+                    className={`p-4 rounded-xl border text-left transition-all ${
+                      config.engineType === 'capacitor'
+                        ? 'bg-amber-500/20 border-amber-500 text-white ring-1 ring-amber-500'
+                        : 'bg-slate-950 border-slate-800 text-slate-400 hover:text-white'
+                    }`}
+                  >
+                    <div className="flex items-center justify-between mb-2">
+                      <span className="font-bold text-sm text-amber-400 flex items-center gap-1.5">
+                        <Layers className="w-4 h-4 text-amber-400" />
+                        <span>Capacitor / PWA Hybrid</span>
+                      </span>
+                      <span className="text-[10px] bg-amber-500/20 text-amber-300 border border-amber-500/30 px-2 py-0.5 rounded-full font-bold">Pro 30k</span>
+                    </div>
+                    <p className="text-xs text-slate-300 mb-2">
+                      Capacitor 6.x runtime dengan Service Worker caching dan akses penuh ke Native Plugins web JS.
+                    </p>
+                    <div className="text-[11px] text-slate-400 flex items-center gap-2">
+                      <span className="flex items-center gap-1"><Check className="w-3 h-3 text-amber-400" /> Offline SW</span>
+                      <span className="flex items-center gap-1"><Check className="w-3 h-3 text-amber-400" /> Web Plugins</span>
+                      <span className="flex items-center gap-1"><Check className="w-3 h-3 text-amber-400" /> Cross-Platform</span>
+                    </div>
+                  </button>
 
-              <button
-                type="button"
-                onClick={() => handleSelectEngine('electron-pro')}
-                className={`p-4 rounded-xl border text-left transition-all ${
-                  config.engineType === 'electron-pro'
-                    ? 'bg-amber-500/20 border-amber-500 text-white ring-1 ring-amber-500'
-                    : 'bg-slate-950 border-slate-800 text-slate-400 hover:text-white'
-                }`}
-              >
-                <div className="flex items-center justify-between mb-2">
-                  <span className="font-bold text-sm text-amber-400 flex items-center gap-1.5">
-                    <Code className="w-4 h-4 text-amber-400" />
-                    <span>Electron Pro Desktop Engine</span>
+                  <button
+                    type="button"
+                    onClick={() => handleSelectEngine('react-native')}
+                    className={`p-4 rounded-xl border text-left transition-all ${
+                      config.engineType === 'react-native'
+                        ? 'bg-amber-500/20 border-amber-500 text-white ring-1 ring-amber-500'
+                        : 'bg-slate-950 border-slate-800 text-slate-400 hover:text-white'
+                    }`}
+                  >
+                    <div className="flex items-center justify-between mb-2">
+                      <span className="font-bold text-sm text-amber-400 flex items-center gap-1.5">
+                        <Code className="w-4 h-4 text-amber-400" />
+                        <span>React Native / Expo Engine</span>
+                      </span>
+                      <span className="text-[10px] bg-amber-500/20 text-amber-300 border border-amber-500/30 px-2 py-0.5 rounded-full font-bold">Pro 30k</span>
+                    </div>
+                    <p className="text-xs text-slate-300 mb-2">
+                      React Native 0.74 + Expo Webview shell. Dioptimalkan untuk kompatibilitas JavaScript modern dan Fast Refresh.
+                    </p>
+                    <div className="text-[11px] text-slate-400 flex items-center gap-2">
+                      <span className="flex items-center gap-1"><Check className="w-3 h-3 text-amber-400" /> Expo Webview</span>
+                      <span className="flex items-center gap-1"><Check className="w-3 h-3 text-amber-400" /> React Hooks Bridge</span>
+                      <span className="flex items-center gap-1"><Check className="w-3 h-3 text-amber-400" /> Universal JS</span>
+                    </div>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => handleSelectEngine('tauri')}
+                    className={`p-4 rounded-xl border text-left transition-all ${
+                      config.engineType === 'tauri'
+                        ? 'bg-amber-500/20 border-amber-500 text-white ring-1 ring-amber-500'
+                        : 'bg-slate-950 border-slate-800 text-slate-400 hover:text-white'
+                    }`}
+                  >
+                    <div className="flex items-center justify-between mb-2">
+                      <span className="font-bold text-sm text-amber-400 flex items-center gap-1.5">
+                        <Cpu className="w-4 h-4 text-amber-400" />
+                        <span>Tauri 2.0 Rust Engine</span>
+                      </span>
+                      <span className="text-[10px] bg-amber-500/20 text-amber-300 border border-amber-500/30 px-2 py-0.5 rounded-full font-bold">Pro 30k</span>
+                    </div>
+                    <p className="text-xs text-slate-300 mb-2">
+                      Engine Tauri versi 2 (Rust + WebView2/WKWebView). Ukuran executable sangat kecil (&lt; 5MB) dan keamanan tingkat tinggi.
+                    </p>
+                    <div className="text-[11px] text-slate-400 flex items-center gap-2">
+                      <span className="flex items-center gap-1"><Check className="w-3 h-3 text-amber-400" /> Hardened Memory</span>
+                      <span className="flex items-center gap-1"><Check className="w-3 h-3 text-amber-400" /> Minimal Memory RAM</span>
+                      <span className="flex items-center gap-1"><Check className="w-3 h-3 text-amber-400" /> Cross-Desktop/Mobile</span>
+                    </div>
+                  </button>
+                </div>
+              </div>
+
+              {/* TIER 3: ENTERPRISE VIP ENGINES (Rp 60.000 / Bulan) */}
+              <div className="space-y-2 pt-2 border-t border-slate-800/80">
+                <div className="flex items-center justify-between px-1">
+                  <span className="text-xs font-bold text-purple-400 uppercase tracking-wider flex items-center gap-1.5">
+                    <Sparkles className="w-4 h-4 text-purple-400" />
+                    <span>4. Paket Enterprise VIP (Rp 60.000 / Bulan)</span>
                   </span>
-                  <span className="text-[10px] bg-purple-500/20 text-purple-300 border border-purple-500/30 px-2 py-0.5 rounded-full font-bold">Enterprise 60k</span>
+                  <span className="text-[10px] bg-purple-500/20 text-purple-300 border border-purple-500/30 px-2.5 py-0.5 rounded-full font-bold">
+                    Full Unlocked VIP
+                  </span>
                 </div>
-                <p className="text-xs text-slate-300 mb-2">
-                  Chromium 126 + Node.js 20 wrapper produksi dengan fitur tray bar, installer `.exe`, `.dmg`, `.AppImage`, & auto-updater.
-                </p>
-                <div className="text-[11px] text-slate-400 flex items-center gap-2">
-                  <span className="flex items-center gap-1"><Check className="w-3 h-3 text-amber-400" /> Full Desktop Shell</span>
-                  <span className="flex items-center gap-1"><Check className="w-3 h-3 text-amber-400" /> System Tray</span>
-                  <span className="flex items-center gap-1"><Check className="w-3 h-3 text-amber-400" /> Auto-Updater</span>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                  <button
+                    type="button"
+                    onClick={() => handleSelectEngine('kmp')}
+                    className={`p-4 rounded-xl border text-left transition-all ${
+                      config.engineType === 'kmp'
+                        ? 'bg-purple-500/20 border-purple-500 text-white ring-1 ring-purple-500'
+                        : 'bg-slate-950 border-slate-800 text-slate-400 hover:text-white'
+                    }`}
+                  >
+                    <div className="flex items-center justify-between mb-2">
+                      <span className="font-bold text-sm text-purple-400 flex items-center gap-1.5">
+                        <Zap className="w-4 h-4 text-purple-400" />
+                        <span>Kotlin Multiplatform (KMP)</span>
+                      </span>
+                      <span className="text-[10px] bg-purple-500/20 text-purple-300 border border-purple-500/30 px-2 py-0.5 rounded-full font-bold">Enterprise 60k</span>
+                    </div>
+                    <p className="text-xs text-slate-300 mb-2">
+                      KMP shared business logic + Compose Multiplatform UI. Performa kompilasi murni LLVM/JVM untuk Android & iOS.
+                    </p>
+                    <div className="text-[11px] text-slate-400 flex items-center gap-2">
+                      <span className="flex items-center gap-1"><Check className="w-3 h-3 text-purple-400" /> Shared Logic</span>
+                      <span className="flex items-center gap-1"><Check className="w-3 h-3 text-purple-400" /> Compose UI</span>
+                      <span className="flex items-center gap-1"><Check className="w-3 h-3 text-purple-400" /> Native Performance</span>
+                    </div>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => handleSelectEngine('turbo-native')}
+                    className={`p-4 rounded-xl border text-left transition-all ${
+                      config.engineType === 'turbo-native'
+                        ? 'bg-purple-500/20 border-purple-500 text-white ring-1 ring-purple-500'
+                        : 'bg-slate-950 border-slate-800 text-slate-400 hover:text-white'
+                    }`}
+                  >
+                    <div className="flex items-center justify-between mb-2">
+                      <span className="font-bold text-sm text-purple-400 flex items-center gap-1.5">
+                        <Smartphone className="w-4 h-4 text-purple-400" />
+                        <span>Hotwire Turbo Native Engine</span>
+                      </span>
+                      <span className="text-[10px] bg-purple-500/20 text-purple-300 border border-purple-500/30 px-2 py-0.5 rounded-full font-bold">Enterprise 60k</span>
+                    </div>
+                    <p className="text-xs text-slate-300 mb-2">
+                      Engine navigasi Hotwire/Turbo untuk menyatukan halaman web real-time server dengan transisi layar native super mulus.
+                    </p>
+                    <div className="text-[11px] text-slate-400 flex items-center gap-2">
+                      <span className="flex items-center gap-1"><Check className="w-3 h-3 text-purple-400" /> Turbo Navigation</span>
+                      <span className="flex items-center gap-1"><Check className="w-3 h-3 text-purple-400" /> Zero Reload Lag</span>
+                      <span className="flex items-center gap-1"><Check className="w-3 h-3 text-purple-400" /> Server-Driven</span>
+                    </div>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => handleSelectEngine('harmony-os')}
+                    className={`p-4 rounded-xl border text-left transition-all ${
+                      config.engineType === 'harmony-os'
+                        ? 'bg-purple-500/20 border-purple-500 text-white ring-1 ring-purple-500'
+                        : 'bg-slate-950 border-slate-800 text-slate-400 hover:text-white'
+                    }`}
+                  >
+                    <div className="flex items-center justify-between mb-2">
+                      <span className="font-bold text-sm text-purple-400 flex items-center gap-1.5">
+                        <Cpu className="w-4 h-4 text-purple-400" />
+                        <span>OpenHarmony (ArkUI Engine)</span>
+                      </span>
+                      <span className="text-[10px] bg-purple-500/20 text-purple-300 border border-purple-500/30 px-2 py-0.5 rounded-full font-bold">Enterprise 60k</span>
+                    </div>
+                    <p className="text-xs text-slate-300 mb-2">
+                      Mesin ArkUI & WebKit Huawei HarmonyOS NEXT untuk ekosistem perangkat pintar global terbaru.
+                    </p>
+                    <div className="text-[11px] text-slate-400 flex items-center gap-2">
+                      <span className="flex items-center gap-1"><Check className="w-3 h-3 text-purple-400" /> ArkUI Runtime</span>
+                      <span className="flex items-center gap-1"><Check className="w-3 h-3 text-purple-400" /> Harmony WebKit</span>
+                      <span className="flex items-center gap-1"><Check className="w-3 h-3 text-purple-400" /> HarmonyOS NEXT</span>
+                    </div>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => handleSelectEngine('electron-pro')}
+                    className={`p-4 rounded-xl border text-left transition-all ${
+                      config.engineType === 'electron-pro'
+                        ? 'bg-purple-500/20 border-purple-500 text-white ring-1 ring-purple-500'
+                        : 'bg-slate-950 border-slate-800 text-slate-400 hover:text-white'
+                    }`}
+                  >
+                    <div className="flex items-center justify-between mb-2">
+                      <span className="font-bold text-sm text-purple-400 flex items-center gap-1.5">
+                        <Code className="w-4 h-4 text-purple-400" />
+                        <span>Electron Pro Desktop Engine</span>
+                      </span>
+                      <span className="text-[10px] bg-purple-500/20 text-purple-300 border border-purple-500/30 px-2 py-0.5 rounded-full font-bold">Enterprise 60k</span>
+                    </div>
+                    <p className="text-xs text-slate-300 mb-2">
+                      Chromium 126 + Node.js 20 wrapper produksi dengan fitur tray bar, installer `.exe`, `.dmg`, `.AppImage`, & auto-updater.
+                    </p>
+                    <div className="text-[11px] text-slate-400 flex items-center gap-2">
+                      <span className="flex items-center gap-1"><Check className="w-3 h-3 text-purple-400" /> Full Desktop Shell</span>
+                      <span className="flex items-center gap-1"><Check className="w-3 h-3 text-purple-400" /> System Tray</span>
+                      <span className="flex items-center gap-1"><Check className="w-3 h-3 text-purple-400" /> Auto-Updater</span>
+                    </div>
+                  </button>
                 </div>
-              </button>
+              </div>
+
             </div>
           </div>
         </div>

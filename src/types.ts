@@ -22,7 +22,7 @@ export interface SupportedPlatforms {
   linux: boolean;
 }
 
-export type EngineType = 'flutter' | 'kotlin' | 'swift' | 'capacitor' | 'react-native' | 'tauri' | 'pwa-shell' | 'kmp' | 'turbo-native' | 'harmony-os' | 'electron-pro';
+export type EngineType = 'flutter' | 'kotlin' | 'swift' | 'capacitor' | 'react-native' | 'tauri' | 'pwa-shell' | 'android-webview' | 'ios-webview' | 'cordova' | 'kmp' | 'turbo-native' | 'harmony-os' | 'electron-pro';
 
 export interface AppConfig {
   id: string;
