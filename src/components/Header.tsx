@@ -13,6 +13,7 @@ interface HeaderProps {
   userProfile: UserProfileData | null;
   onOpenAuthModal: () => void;
   onOpenWalletModal: () => void;
+  onOpenSecurityModal?: () => void;
   saveStatus?: 'saved' | 'saving' | 'error';
   lastSavedTime?: string;
   isPulsing?: boolean;
@@ -29,6 +30,7 @@ export const Header: React.FC<HeaderProps> = ({
   userProfile,
   onOpenAuthModal,
   onOpenWalletModal,
+  onOpenSecurityModal,
   saveStatus = 'saved',
   lastSavedTime,
   isPulsing = false,
@@ -107,6 +109,14 @@ export const Header: React.FC<HeaderProps> = ({
             {/* Quick Actions (Mobile Right) */}
             <div className="flex items-center gap-2 shrink-0 md:hidden">
               <button
+                onClick={onOpenSecurityModal}
+                title="Pusat Keamanan & Privasi"
+                className="p-1.5 rounded-lg text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 hover:bg-emerald-500/20"
+              >
+                <ShieldCheck className="w-4 h-4" />
+              </button>
+
+              <button
                 onClick={onOpenWalletModal}
                 className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-bold bg-amber-500/10 hover:bg-amber-500/20 border border-amber-500/30 text-amber-300"
               >
@@ -172,6 +182,16 @@ export const Header: React.FC<HeaderProps> = ({
           {/* Desktop Quick Actions */}
           <div className="hidden md:flex items-center gap-2">
             
+            {/* Security & Privacy Center Button */}
+            <button
+              onClick={onOpenSecurityModal}
+              title="Pusat Keamanan & Kebijakan Privasi"
+              className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-semibold bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 transition-all shadow-sm"
+            >
+              <ShieldCheck className="w-4 h-4 text-emerald-400 shrink-0" />
+              <span className="hidden lg:inline">Keamanan & Privasi</span>
+            </button>
+
             {/* Wallet & Balance Button */}
             <button
               onClick={onOpenWalletModal}

@@ -473,7 +473,7 @@ export const Configurator: React.FC<ConfiguratorProps> = ({
                     <div className="flex items-center justify-between mb-2">
                       <span className="font-bold text-sm text-amber-400 flex items-center gap-1.5">
                         <Zap className="w-4 h-4 text-amber-400" />
-                        <span>Flutter 3.x Engine (Rekomendasi)</span>
+                        <span>Flutter 3.x Engine</span>
                       </span>
                       <span className="text-[10px] bg-amber-500/20 text-amber-300 border border-amber-500/30 px-2 py-0.5 rounded-full font-bold">Pro 30k</span>
                     </div>

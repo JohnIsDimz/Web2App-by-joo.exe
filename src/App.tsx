@@ -9,6 +9,7 @@ import { SavedAppsModal } from './components/SavedAppsModal';
 import { AuthModal } from './components/AuthModal';
 import { WalletModal } from './components/WalletModal';
 import { WelcomeModal } from './components/WelcomeModal';
+import { SecurityPrivacyModal } from './components/SecurityPrivacyModal';
 import { ServerStatus } from './components/ServerStatus';
 import { AppConfig, WebSiteAnalysis } from './types';
 import { downloadFlutterProjectZip } from './utils/zipExporter';
@@ -91,6 +92,7 @@ export default function App() {
   const [userProfile, setUserProfile] = useState<UserProfileData | null>(null);
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
   const [isWalletModalOpen, setIsWalletModalOpen] = useState(false);
+  const [isSecurityModalOpen, setIsSecurityModalOpen] = useState(false);
 
   const [config, setConfig] = useState<AppConfig>(() => {
     const saved = localStorage.getItem('web2app_config_guest');
@@ -369,6 +371,7 @@ export default function App() {
         userProfile={userProfile}
         onOpenAuthModal={() => setIsAuthModalOpen(true)}
         onOpenWalletModal={() => setIsWalletModalOpen(true)}
+        onOpenSecurityModal={() => setIsSecurityModalOpen(true)}
         saveStatus={saveStatus}
         lastSavedTime={lastSavedTime}
         isPulsing={isPulsing}
@@ -425,7 +428,12 @@ export default function App() {
           <div className="flex items-center gap-2 flex-wrap justify-center sm:justify-start">
             <span className="font-bold text-slate-300">Web2App Studio oleh joo.exe</span>
             <span>•</span>
-            <span>Dilindungi oleh Firebase Cloud Auth & Database Engine</span>
+            <button
+              onClick={() => setIsSecurityModalOpen(true)}
+              className="text-emerald-400 hover:text-emerald-300 underline font-medium cursor-pointer transition-colors"
+            >
+              Kebijakan Privasi & Pusat Keamanan
+            </button>
           </div>
 
           <div className="flex items-center justify-center">
@@ -433,6 +441,14 @@ export default function App() {
           </div>
         </div>
       </footer>
+
+      {/* Security & Privacy Center Modal */}
+      <SecurityPrivacyModal
+        isOpen={isSecurityModalOpen}
+        onClose={() => setIsSecurityModalOpen(false)}
+        currentUser={currentUser}
+        userProfile={userProfile}
+      />
 
 
       {/* Saved Apps History Drawer/Modal */}

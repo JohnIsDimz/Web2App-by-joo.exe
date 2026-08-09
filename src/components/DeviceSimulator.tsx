@@ -61,9 +61,17 @@ export const DeviceSimulator: React.FC<DeviceSimulatorProps> = ({
     setIframeKey((prev) => prev + 1);
   };
 
-  const previewUrl = useProxyViewer
-    ? `/api/proxy?url=${encodeURIComponent(config.url)}`
-    : config.url;
+  const isStaticEdgeHost = typeof window !== 'undefined' && (
+    window.location.hostname.includes('workers.dev') ||
+    window.location.hostname.includes('pages.dev') ||
+    window.location.hostname.includes('github.io')
+  );
+
+  const targetSiteUrl = config.url || 'https://shopee.co.id';
+
+  const previewUrl = (useProxyViewer && !isStaticEdgeHost)
+    ? `/api/proxy?url=${encodeURIComponent(targetSiteUrl)}`
+    : targetSiteUrl;
 
   // Device Dimensions Mapping
   const getDeviceDimensions = () => {

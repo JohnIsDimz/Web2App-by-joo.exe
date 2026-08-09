@@ -24,6 +24,7 @@ import {
   onSnapshot
 } from 'firebase/firestore';
 import firebaseConfigData from '../../firebase-applet-config.json';
+import { saveEncryptedUserSession, loadEncryptedUserSession } from './cookieSecurity';
 
 const firebaseConfig = {
   apiKey: firebaseConfigData.apiKey,
@@ -239,25 +240,23 @@ export async function saveUserProfile(user: User): Promise<UserProfileData & { i
  * Subscribe to User Profile Firestore Document realtime updates
  */
 export function subscribeUserProfile(uid: string, callback: (profile: UserProfileData | null) => void) {
+  // Immediately emit fast cached session profile (0ms delay for Cloudflare Workers edge)
+  const initialFastProfile = loadEncryptedUserSession(uid);
+  if (initialFastProfile) {
+    callback(initialFastProfile);
+  }
+
   const sendFallback = () => {
     if (auth.currentUser) {
-      // Check cached profile first to guarantee balance/tokens persistence
-      try {
-        const cached = localStorage.getItem(`web2app_user_profile_${uid}`);
-        if (cached) {
-          const parsed = JSON.parse(cached);
-          if (parsed && typeof parsed.balance === 'number') {
-            callback(parsed);
-            return;
-          }
-        }
-      } catch (e) {
-        // Ignore JSON error
+      const cached = loadEncryptedUserSession(uid);
+      if (cached) {
+        callback(cached);
+        return;
       }
 
       const email = auth.currentUser.email;
       const admin = isAdminUser(email);
-      callback({
+      const fallbackProfile: UserProfileData = {
         uid: auth.currentUser.uid,
         email: email,
         displayName: auth.currentUser.displayName || (admin ? 'Developer VIP Admin' : 'User'),
@@ -270,7 +269,9 @@ export function subscribeUserProfile(uid: string, callback: (profile: UserProfil
         lastLogin: new Date().toISOString(),
         createdAt: new Date().toISOString(),
         isAdmin: admin
-      });
+      };
+      saveEncryptedUserSession(fallbackProfile);
+      callback(fallbackProfile);
     } else {
       callback(null);
     }
@@ -298,13 +299,8 @@ export function subscribeUserProfile(uid: string, callback: (profile: UserProfil
         }
       }
 
-      // Persist to local storage to protect against offline loss
-      try {
-        localStorage.setItem(`web2app_user_profile_${uid}`, JSON.stringify(data));
-      } catch (e) {
-        // Storage full or unavailable
-      }
-
+      // Persist to encrypted cookies & instant local storage
+      saveEncryptedUserSession(data);
       callback(data);
     } else {
       sendFallback();
@@ -420,6 +416,13 @@ export async function buyTokenPackage(uid: string, tokenCount: number, priceIdr:
   const newBalance = (current.balance || 0) - priceIdr;
   const newTokens = (current.tokens || 0) + tokenCount;
 
+  // Optimistic instant update for 0ms latency on Cloudflare
+  saveEncryptedUserSession({
+    ...current,
+    balance: newBalance,
+    tokens: newTokens
+  });
+
   try {
     await setDoc(userRef, {
       balance: newBalance,
@@ -512,6 +515,12 @@ export async function deductToken(uid: string, costTokens = 1): Promise<number> 
   }
 
   const newTokens = Math.max(0, (current.tokens || 0) - costTokens);
+
+  // Optimistic instant update for 0ms latency on Cloudflare
+  saveEncryptedUserSession({
+    ...current,
+    tokens: newTokens
+  });
 
   try {
     await setDoc(userRef, { tokens: newTokens }, { merge: true });
