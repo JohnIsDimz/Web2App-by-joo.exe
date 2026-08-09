@@ -15,6 +15,7 @@ import {
   Volume2,
   BatteryCharging,
   MessageSquare,
+  Globe,
 } from 'lucide-react';
 import { AppConfig } from '../types';
 
@@ -167,7 +168,7 @@ export const DeviceSimulator: React.FC<DeviceSimulatorProps> = ({
                 : 'bg-slate-800 text-slate-300 border-slate-700 hover:text-white'
             }`}
           >
-            <Sparkles className="w-3.5 h-3.5 text-emerald-400" />
+            <Globe className="w-3.5 h-3.5 text-emerald-400" />
             <span>{useProxyViewer ? 'Proxy' : 'Direct'}</span>
           </button>
 
@@ -177,10 +178,10 @@ export const DeviceSimulator: React.FC<DeviceSimulatorProps> = ({
             className={`px-2.5 py-1.5 rounded-xl text-xs font-semibold border transition-all flex items-center gap-1 ${
               isOfflineTest
                 ? 'bg-rose-500/20 text-rose-300 border-rose-500/40'
-                : 'bg-slate-800 text-slate-300 border-slate-700 hover:text-white'
+                : 'bg-emerald-500/20 text-emerald-300 border-emerald-500/40 hover:bg-emerald-500/30'
             }`}
           >
-            {isOfflineTest ? <WifiOff className="w-3.5 h-3.5" /> : <Wifi className="w-3.5 h-3.5" />}
+            {isOfflineTest ? <WifiOff className="w-3.5 h-3.5 text-rose-400" /> : <Wifi className="w-3.5 h-3.5 text-emerald-400" />}
             <span>{isOfflineTest ? 'Offline' : 'Online'}</span>
           </button>
 

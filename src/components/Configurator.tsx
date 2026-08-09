@@ -30,19 +30,28 @@ import {
   CheckCircle2,
 } from 'lucide-react';
 import { AppConfig } from '../types';
+import { UserProfileData } from '../lib/firebase';
 
 interface ConfiguratorProps {
   config: AppConfig;
   onChangeConfig: (updated: Partial<AppConfig>) => void;
   onResetDefaults: () => void;
+  userProfile?: UserProfileData | null;
+  onOpenWalletModal?: () => void;
 }
 
 export const Configurator: React.FC<ConfiguratorProps> = ({
   config,
   onChangeConfig,
   onResetDefaults,
+  userProfile,
+  onOpenWalletModal,
 }) => {
   const [activeTab, setActiveTab] = useState<'general' | 'engine' | 'visuals' | 'nav' | 'custom_code' | 'advanced' | 'permissions' | 'platforms'>('general');
+
+  const userPlan = userProfile?.subscriptionPlan || 'Free';
+  const isVIP = userProfile?.isAdmin || userPlan === 'Enterprise';
+  const isProOrVIP = isVIP || userPlan === 'Pro';
 
   const handlePermissionToggle = (key: keyof AppConfig['permissions']) => {
     onChangeConfig({
@@ -228,8 +237,24 @@ export const Configurator: React.FC<ConfiguratorProps> = ({
           <div>
             <h3 className="text-sm font-bold text-white mb-1">Pilih Native Compilation Engine</h3>
             <p className="text-xs text-slate-400 mb-4">
-              Pilih mesin pendorong utama yang akan mengeksekusi aplikasi web Anda secara native di perangkat mobile.
+              Pilih mesin pendorong utama yang akan mengeksekusi aplikasi web Anda secara native di perangkat mobile & desktop.
             </p>
+
+            {!isProOrVIP && ['kmp', 'turbo-native', 'harmony-os', 'electron-pro', 'tauri'].includes(config.engineType) && (
+              <div className="p-3.5 bg-amber-500/10 border border-amber-500/30 rounded-xl text-amber-200 text-xs flex items-center justify-between gap-3 mb-4">
+                <div className="flex items-center gap-2">
+                  <Lock className="w-4 h-4 text-amber-400 shrink-0" />
+                  <span>Engine <strong>{config.engineType.toUpperCase()}</strong> adalah fitur eksklusif paket <strong>Pro Builder (Rp 25.000)</strong> & <strong>Enterprise VIP</strong>.</span>
+                </div>
+                <button
+                  type="button"
+                  onClick={onOpenWalletModal}
+                  className="px-3.5 py-1.5 bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-400 hover:to-orange-400 text-slate-950 font-bold text-xs rounded-lg shadow shrink-0 transition-all cursor-pointer"
+                >
+                  Upgrade Rp 25.000
+                </button>
+              </div>
+            )}
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <button
@@ -411,6 +436,110 @@ export const Configurator: React.FC<ConfiguratorProps> = ({
                   <span className="flex items-center gap-1"><Check className="w-3 h-3 text-indigo-400" /> Installable App</span>
                   <span className="flex items-center gap-1"><Check className="w-3 h-3 text-indigo-400" /> Offline Cache</span>
                   <span className="flex items-center gap-1"><Check className="w-3 h-3 text-indigo-400" /> Zero-SDK Needed</span>
+                </div>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => onChangeConfig({ engineType: 'kmp' })}
+                className={`p-4 rounded-xl border text-left transition-all ${
+                  config.engineType === 'kmp'
+                    ? 'bg-purple-500/20 border-purple-500 text-white ring-1 ring-purple-500'
+                    : 'bg-slate-950 border-slate-800 text-slate-400 hover:text-white'
+                }`}
+              >
+                <div className="flex items-center justify-between mb-2">
+                  <span className="font-bold text-sm text-purple-400 flex items-center gap-1.5">
+                    <Zap className="w-4 h-4 text-purple-400" />
+                    <span>Kotlin Multiplatform (KMP)</span>
+                  </span>
+                  <span className="text-[10px] bg-purple-500/30 text-purple-300 px-2 py-0.5 rounded-full font-mono">Next-Gen</span>
+                </div>
+                <p className="text-xs text-slate-300 mb-2">
+                  KMP shared business logic + Compose Multiplatform UI. Performa kompilasi murni LLVM/JVM untuk Android & iOS.
+                </p>
+                <div className="text-[11px] text-slate-400 flex items-center gap-2">
+                  <span className="flex items-center gap-1"><Check className="w-3 h-3 text-purple-400" /> Shared Logic</span>
+                  <span className="flex items-center gap-1"><Check className="w-3 h-3 text-purple-400" /> Compose UI</span>
+                  <span className="flex items-center gap-1"><Check className="w-3 h-3 text-purple-400" /> Native Performance</span>
+                </div>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => onChangeConfig({ engineType: 'turbo-native' })}
+                className={`p-4 rounded-xl border text-left transition-all ${
+                  config.engineType === 'turbo-native'
+                    ? 'bg-emerald-500/20 border-emerald-500 text-white ring-1 ring-emerald-500'
+                    : 'bg-slate-950 border-slate-800 text-slate-400 hover:text-white'
+                }`}
+              >
+                <div className="flex items-center justify-between mb-2">
+                  <span className="font-bold text-sm text-emerald-400 flex items-center gap-1.5">
+                    <Smartphone className="w-4 h-4 text-emerald-400" />
+                    <span>Hotwire Turbo Native Engine</span>
+                  </span>
+                  <span className="text-[10px] bg-emerald-500/30 text-emerald-300 px-2 py-0.5 rounded-full font-mono">Real-Time Web</span>
+                </div>
+                <p className="text-xs text-slate-300 mb-2">
+                  Engine navigasi Hotwire/Turbo untuk menyatukan halaman web real-time server dengan transisi layar native super mulus.
+                </p>
+                <div className="text-[11px] text-slate-400 flex items-center gap-2">
+                  <span className="flex items-center gap-1"><Check className="w-3 h-3 text-emerald-400" /> Turbo Navigation</span>
+                  <span className="flex items-center gap-1"><Check className="w-3 h-3 text-emerald-400" /> Zero Reload Lag</span>
+                  <span className="flex items-center gap-1"><Check className="w-3 h-3 text-emerald-400" /> Server-Driven</span>
+                </div>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => onChangeConfig({ engineType: 'harmony-os' })}
+                className={`p-4 rounded-xl border text-left transition-all ${
+                  config.engineType === 'harmony-os'
+                    ? 'bg-blue-500/20 border-blue-500 text-white ring-1 ring-blue-500'
+                    : 'bg-slate-950 border-slate-800 text-slate-400 hover:text-white'
+                }`}
+              >
+                <div className="flex items-center justify-between mb-2">
+                  <span className="font-bold text-sm text-blue-400 flex items-center gap-1.5">
+                    <Cpu className="w-4 h-4 text-blue-400" />
+                    <span>OpenHarmony (ArkUI Engine)</span>
+                  </span>
+                  <span className="text-[10px] bg-blue-500/30 text-blue-300 px-2 py-0.5 rounded-full font-mono">Global OS</span>
+                </div>
+                <p className="text-xs text-slate-300 mb-2">
+                  Mesin ArkUI & WebKit Huawei HarmonyOS NEXT untuk ekosistem perangkat pintar global terbaru.
+                </p>
+                <div className="text-[11px] text-slate-400 flex items-center gap-2">
+                  <span className="flex items-center gap-1"><Check className="w-3 h-3 text-blue-400" /> ArkUI Runtime</span>
+                  <span className="flex items-center gap-1"><Check className="w-3 h-3 text-blue-400" /> Harmony WebKit</span>
+                  <span className="flex items-center gap-1"><Check className="w-3 h-3 text-blue-400" /> HarmonyOS NEXT</span>
+                </div>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => onChangeConfig({ engineType: 'electron-pro' })}
+                className={`p-4 rounded-xl border text-left transition-all ${
+                  config.engineType === 'electron-pro'
+                    ? 'bg-amber-500/20 border-amber-500 text-white ring-1 ring-amber-500'
+                    : 'bg-slate-950 border-slate-800 text-slate-400 hover:text-white'
+                }`}
+              >
+                <div className="flex items-center justify-between mb-2">
+                  <span className="font-bold text-sm text-amber-400 flex items-center gap-1.5">
+                    <Code className="w-4 h-4 text-amber-400" />
+                    <span>Electron Pro Desktop Engine</span>
+                  </span>
+                  <span className="text-[10px] bg-amber-500/30 text-amber-300 px-2 py-0.5 rounded-full font-mono">Windows/Mac/Linux</span>
+                </div>
+                <p className="text-xs text-slate-300 mb-2">
+                  Chromium 126 + Node.js 20 wrapper produksi dengan fitur tray bar, installer `.exe`, `.dmg`, `.AppImage`, & auto-updater.
+                </p>
+                <div className="text-[11px] text-slate-400 flex items-center gap-2">
+                  <span className="flex items-center gap-1"><Check className="w-3 h-3 text-amber-400" /> Full Desktop Shell</span>
+                  <span className="flex items-center gap-1"><Check className="w-3 h-3 text-amber-400" /> System Tray</span>
+                  <span className="flex items-center gap-1"><Check className="w-3 h-3 text-amber-400" /> Auto-Updater</span>
                 </div>
               </button>
             </div>
@@ -622,6 +751,22 @@ export const Configurator: React.FC<ConfiguratorProps> = ({
       {/* TAB: CUSTOM CODE INJECTION */}
       {activeTab === 'custom_code' && (
         <div className="space-y-4">
+          {!isProOrVIP && (
+            <div className="p-3.5 bg-amber-500/10 border border-amber-500/30 rounded-xl text-amber-200 text-xs flex items-center justify-between gap-3">
+              <div className="flex items-center gap-2">
+                <Lock className="w-4 h-4 text-amber-400 shrink-0" />
+                <span>Fitur Injeksi Custom CSS & JS memerlukan Paket <strong>Pro Builder (Rp 25.000)</strong> atau <strong>Enterprise VIP</strong>.</span>
+              </div>
+              <button
+                type="button"
+                onClick={onOpenWalletModal}
+                className="px-3.5 py-1.5 bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-400 hover:to-orange-400 text-slate-950 font-bold text-xs rounded-lg shadow shrink-0 transition-all cursor-pointer"
+              >
+                Upgrade Rp 25.000
+              </button>
+            </div>
+          )}
+
           <label className="flex items-center justify-between p-3.5 bg-slate-950 border border-slate-800 rounded-xl cursor-pointer">
             <div>
               <div className="text-xs font-bold text-white">Aktifkan Custom CSS & JS Injector</div>

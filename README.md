@@ -7,9 +7,9 @@
 ![Flutter](https://img.shields.io/badge/Flutter-3.x-02569B?style=for-the-badge&logo=flutter&logoColor=white)
 ![Android](https://img.shields.io/badge/Android-Jetpack%20Compose-3DDC84?style=for-the-badge&logo=android&logoColor=white)
 ![iOS](https://img.shields.io/badge/iOS-SwiftUI-000000?style=for-the-badge&logo=apple&logoColor=white)
+![Firebase](https://img.shields.io/badge/Firebase-Firestore%20Realtime-FFCA28?style=for-the-badge&logo=firebase&logoColor=black)
 ![React Native](https://img.shields.io/badge/React%20Native-Expo-61DAFB?style=for-the-badge&logo=react&logoColor=black)
 ![Tauri](https://img.shields.io/badge/Tauri-Rust-FFC131?style=for-the-badge&logo=tauri&logoColor=black)
-![Codespaces](https://img.shields.io/badge/GitHub-Codespaces%20Ready-181717?style=for-the-badge&logo=github&logoColor=white)
 
 ---
 
@@ -17,9 +17,9 @@
 
 ## 📌 Tentang Aplikasi
 
-**Web2App Generator Studio** adalah platform pembuat aplikasi web-ke-native serba bisa. Dengannya, Anda dapat mengubah URL website apa pun (seperti toko online Shopee, Tokopedia, YouTube, Wikipedia, atau portal berita) menjadi aplikasi **Android APK / AAB**, **iOS App Store**, **Desktop Windows/macOS/Linux**, atau **PWA Standalone** hanya dalam hitungan detik!
+**Web2App Generator Studio** adalah platform pembuat aplikasi web-ke-native modern serba bisa. Dengan platform ini, Anda dapat mengubah URL website apa pun (seperti toko online Shopee, Tokopedia, YouTube, Wikipedia, atau portal berita) menjadi aplikasi **Android APK / AAB**, **iOS App Store**, **Desktop Windows/macOS/Linux**, atau **PWA Standalone** hanya dalam hitungan detik!
 
-Aplikasi ini dilengkapi dengan **Live Device Simulator**, **Real-Time Compilation Terminal**, **Pemeriksa SSL/URL Otomatis**, dan **Exportir Proyek ZIP**.
+Aplikasi terintegrasi dengan **Database Firestore Real-Time**, sistem **Saldo Balance & Token Build**, akun **Developer VIP Anti-Kadaluwarsa**, **Live Device Simulator**, **Proxy Viewer (Bypasses Frame Blocking)**, **Pemeriksa SSL/URL Otomatis**, dan **Exporter Proyek ZIP**.
 
 ---
 
@@ -28,84 +28,87 @@ Aplikasi ini dilengkapi dengan **Live Device Simulator**, **Real-Time Compilatio
 | Fitur | Deskripsi |
 | :--- | :--- |
 | **⚡ 7 Pilihan Engine Native** | Pilih antara **Flutter 3.x**, **Android Jetpack Compose**, **iOS Swift**, **Capacitor Hybrid**, **React Native / Expo**, **Tauri Rust**, atau **PWA Standalone**. |
+| **💳 Saldo Balance & Token Real-Time** | Manajemen transaksi, top-up saldo balance, pembelian paket token build, dan langganan bulanan tersimpan otomatis secara real-time di Database Firestore. |
+| **👑 Developer VIP (Anti-Kadaluwarsa)** | Akun khusus Developer/Admin (`johnisdimz@gmail.com`) dengan status lisensi aktif permanen (2099+), saldo balance & token tanpa batas. |
+| **🔑 Autentikasi Email & Google** | Form login simpel & modern dengan opsi Email & Kata Sandi serta tombol langsung Google Sign-In. |
 | **💬 Native Floating Action Button (FAB)** | Tambahkan tombol melayang di pojok layar untuk WhatsApp Chat CS (`wa.me`), Telepon langsung (`tel:`), atau eksekusi JavaScript kustom. |
 | **🔒 Keamanan Anti-Screenshot** | Proteksi konten sensitif dengan `FLAG_SECURE` yang mencegah pengambilan screenshot & perekaman layar di Android/iOS. |
 | **👆 Biometric / Fingerprint Lock** | Amankan aplikasi dengan otentikasi Sidik Jari / Face ID sebelum halaman web terbuka. |
 | **🛡️ SSL Pinning & Whitelist** | Batasi navigasi WebView hanya pada domain resmi untuk mencegah serangan Phishing / Man-In-The-Middle. |
-| **🔄 Auto-Update Enforcement** | Sinkronisasi versi aplikasi secara otomatis melalui server JSON eksternal. |
-| **📱 Live Device Simulator** | Uji coba langsung tampilan web pada bingkai iPhone 15 Pro, Samsung Galaxy S24, iPad Pro, atau Desktop. |
+| **🌐 Live Proxy Viewer & Device Simulator** | Uji coba langsung tampilan web pada bingkai iPhone, Pixel, iPad, atau Desktop dengan dukungan Live Proxy bypass frame-blocking dan indikator status Online/Offline. |
 | **📦 Export Kode ZIP Lengkap** | Unduh seluruh source code proyek lengkap siap *build* di Android Studio, Xcode, atau VS Code. |
 
 ---
 
-## 💻 Panduan Menjalankan di GitHub Codespaces
+## 👑 Penjelasan Akun Developer VIP (Anti-Kadaluwarsa)
 
-Jika Anda membuka repository ini di **GitHub Codespaces** dan bingung bagaimana cara melihat dan menjalankan aplikasinya, ikuti langkah-langkah mudah di bawah ini!
+Aplikasi dilengkapi dengan sistem otomatis identifikasi **Akun Developer VIP / Admin Khusus** (`johnisdimz@gmail.com` atau domain admin/developer).
+
+### 🌟 Hak Istimewa Akun Developer VIP:
+1. **Status Langganan Anti-Kadaluwarsa**: Lisensi otomatis terdaftar sebagai `Enterprise Plan` dengan tanggal kadaluwarsa permanen (`2099-12-31`).
+2. **Saldo Balance Unlimted**: Otomatis mendapatkan saldo balance `Rp 999.999.999` untuk pengujian seluruh fitur transaksi.
+3. **Saldo Token Build Unlimted**: Otomatis mendapatkan `999.999 Token` untuk kebutuhan *convert/build* aplikasi tanpa batasan.
+4. **Sinkronisasi Real-Time Firestore**: Profil dan hak akses terverifikasi langsung dengan Firebase Firestore setiap kali login.
+
+---
+
+## 💻 Panduan Lengkap Pengoperasian di GitHub Codespaces
+
+GitHub Codespaces memungkinkan Anda menjalankan Web2App Generator Studio langsung di Cloud Container browser tanpa perlu instalasi rumit di komputer lokal.
+
+### ─────────────── STEPS ───────────────
 
 ```
- ┌─────────────────────────────────────────────────────────┐
- │ 1. Open Repository  ➜  2. Run `npm run dev`  ➜  3. Preview │
- └─────────────────────────────────────────────────────────┘
+ ┌─────────────────────────────────────────────────────────────────────────────────┐
+ │ 1. Create Codespace ➜ 2. Check Node ➜ 3. npm install ➜ 4. npm run dev ➜ 5. View │
+ └─────────────────────────────────────────────────────────────────────────────────┘
 ```
 
-### 1️⃣ Buka Terminal di Codespaces
-* Di halaman GitHub Codespaces, tekan kombinasi tombol keyboard:
-  * **Windows/Linux**: `Ctrl` + `~` (tombol tilde di atas Tab)
-  * **Mac**: `Cmd` + `~`
-* Atau klik menu garis tiga **☰** di pojok kiri atas ➜ **Terminal** ➜ **New Terminal**.
+#### 1️⃣ Membuat & Membuka GitHub Codespace
+1. Buka repositori proyek ini di GitHub.
+2. Klik tombol hijau **`<> Code`** di pojok kanan atas.
+3. Pilih tab **`Codespaces`**, lalu klik **`Create codespace on main`**.
+4. Tunggu beberapa detik hingga VS Code Browser selesai mempersiapkan container.
 
-### 2️⃣ Install Dependencies (Jika belum)
-Ketik perintah berikut di terminal lalu tekan **Enter**:
+#### 2️⃣ Memeriksa Lingkungan Node.js
+Buka Terminal internal di Codespaces (Tekan `Ctrl` + `~` atau `Cmd` + `~`), lalu pastikan Node.js v18+ sudah siap:
+```bash
+node -v
+npm -v
+```
+
+#### 3️⃣ Menginstall Dependencies
+Jalankan perintah berikut untuk menginstall seluruh dependensi package React, Express, Vite, dan Firebase SDK:
 ```bash
 npm install
 ```
 
-### 3️⃣ Jalankan Dev Server
-Ketik perintah ini untuk menyalakan aplikasi:
+#### 4️⃣ Menjalankan Development Server
+Jalankan dev server dengan perintah:
 ```bash
 npm run dev
 ```
-
-Anda akan melihat log seperti ini di terminal:
+Server Express & Vite akan aktif pada host `0.0.0.0` dan port `3000`:
 ```text
 Server running on http://localhost:3000
 ```
 
----
-
-### 🌐 Cara Melihat Tampilan Aplikasi (Preview)
-
-Setiap kali aplikasi berjalan di Port `3000`, GitHub Codespaces akan mendeteksi server tersebut secara otomatis. Ada 2 cara mudah untuk melihat tampilannya:
-
-#### Cara A: Lewat Pop-Up Notification (Paling Mudah)
-1. Setelah menjalankan `npm run dev`, perhatikan pojok kanan bawah layar Codespaces Anda.
-2. Akan muncul pop-up pemberitahuan:  
-   *`"Your application running on port 3000 is available."`*
-3. Klik tombol **Open in Browser** pada pop-up tersebut. Aplikasi akan terbuka di tab baru!
-
-#### Cara B: Lewat Tab "Ports" di VS Code / Codespaces
-1. Di panel bawah (tempat Terminal berada), cari dan klik tab bernama **Ports**.
-2. Anda akan melihat daftar port yang aktif, salah satunya **3000 (HTTP)**.
-3. Arahkan kursor ke port `3000`, lalu klik ikon **Globe / World (Open in Browser)** 🌐.
-4. Jika halaman masih kosong / putih, klik kanan pada port `3000` ➜ **Port Visibility** ➜ Ubah dari *Private* menjadi **Public**.
-
-```text
- ┌────────────────────────────────────────────────────────────────────────┐
- │  TERMINAL   OUTPUT   DEBUG CONSOLE   PORTS 👈 (Klik di sini)           │
- ├──────────┬─────────────┬─────────────────┬─────────────────────────────┤
- │ Port     │ Local Address│ Forwarded Address│ Visibility                │
- │ 3000     │ localhost   │ https://...     │ Public 🌐  [Open Browser]   │
- └──────────┴─────────────┴─────────────────┴─────────────────────────────┘
-```
+#### 5️⃣ Mengakses Preview Aplikasi
+1. Buka tab **`Ports`** di bagian bawah panel VS Code.
+2. Cari baris **Port 3000**.
+3. Klik icon **Globe / Open in Browser** 🌐 atau salin URL forwarded port yang disediakan oleh GitHub Codespaces.
+4. Jika diperlukan, ubah visibilitas port menjadi **`Public`** dengan cara *right-click* pada Port 3000 ➔ **`Port Visibility`** ➔ **`Public`**.
 
 ---
 
 ## 🛠️ Perintah Utama (NPM Scripts)
 
-* `npm run dev` : Menjalankan server pengembang lokal di Port 3000.
-* `npm run build` : Mengompilasi proyek React & Express menjadi bundle produksi di folder `dist/`.
-* `npm start` : Menjalankan aplikasi produksi dari folder `dist/server.cjs`.
-* `npm run lint` : Memeriksa kesalahan tipe dan sintaks TypeScript.
+| Perintah | Fungsi / Kegunaan |
+| :--- | :--- |
+| `npm run dev` | Menjalankan server pengembang lokal & Vite middleware di Port 3000. |
+| `npm run build` | Mengompilasi proyek React & bundling backend `server.ts` menggunakan `esbuild` ke `dist/server.cjs`. |
+| `npm start` | Menjalankan aplikasi versi produksi dari `dist/server.cjs`. |
+| `npm run lint` | Memeriksa tipe TypeScript (`tsc --noEmit`) untuk memastikan tidak ada sintaks error. |
 
 ---
 
@@ -113,8 +116,9 @@ Setiap kali aplikasi berjalan di Port `3000`, GitHub Codespaces akan mendeteksi 
 
 ```text
 ├── src/
-│   ├── components/       # Komponen UI utama (Configurator, Simulator, ExportView, dll.)
-│   ├── data/             # Preset template website (Shopee, YouTube, Wikipedia, dll.)
+│   ├── components/       # Komponen UI utama (Configurator, DeviceSimulator, WalletModal, AuthModal, dll.)
+│   ├── data/             # Preset template website (Shopee, Tokopedia, YouTube, Wikipedia, dll.)
+│   ├── lib/              # Integrasi Firebase Firestore, Auth, dan helper transaksi real-time
 │   ├── utils/            # Generator kode Flutter, Android Compose, Swift, & ZIP exporter
 │   ├── types.ts          # Definisi TypeScript interface & tipe data
 │   ├── App.tsx           # Entrypoint UI React utama
@@ -126,30 +130,8 @@ Setiap kali aplikasi berjalan di Port `3000`, GitHub Codespaces akan mendeteksi 
 
 ---
 
-## ❓ FAQ & Troubleshooting
-
-<details>
-<summary><b>1. Mengapa halaman preview di Codespaces berwarna putih / Blank Page?</b></summary>
-<br>
-Pastikan server dev sudah berjalan (`npm run dev`). Jika sudah, buka tab <b>Ports</b> di Codespaces, klik kanan pada Port <code>3000</code>, lalu pilih <b>Port Visibility ➜ Public</b>. Setelah itu refresh tab preview Anda.
-</details>
-
-<details>
-<summary><b>2. Apakah hasil export ZIP bisa langsung di-build di HP / Komputer sendiri?</b></summary>
-<br>
-Ya! Proyek yang diunduh berupa source code murni (Flutter / Android Compose / Swift / React Native / Tauri). Anda dapat mengekstrak file ZIP tersebut dan menjalankannya dengan perintah <code>flutter run</code> atau membukanya di Android Studio / Xcode.
-</details>
-
-<details>
-<summary><b>3. Mengapa fitur Anti-Screenshot atau Biometric tidak berefek di browser biasa?</b></summary>
-<br>
-Fitur keamanan seperti <code>FLAG_SECURE</code> (Anti-Screenshot) dan Fingerprint Lock memanfaatkan API hardware native Android/iOS. Fitur tersebut terkompilasi secara otomatis dalam kode native Flutter/Android/iOS dan akan berfungsi saat aplikasi diinstall sebagai APK/App di perangkat nyata.
-</details>
-
----
-
 <div align="center">
 
-Dibuat dengan ❤️ menggunakan React, Vite, Express, & Tailwind CSS.
+Dibuat dengan ❤️ menggunakan React, Vite, Express, Firebase Firestore, & Tailwind CSS.
 
 </div>

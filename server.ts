@@ -2,15 +2,88 @@ import express from "express";
 import path from "path";
 import { exec } from "child_process";
 import { createServer as createViteServer } from "vite";
+import rateLimit from "express-rate-limit";
 
 const app = express();
 const PORT = Number(process.env.PORT || process.env.SERVER_PORT || 3000);
 
+// Trust proxy header when running behind reverse proxy / Cloud Run
+app.set("trust proxy", 1);
+
 app.use(express.json());
 
+// ---------------------------------------------------------
+// Rate Limiter Configurations for Pterodactyl Build Server Protection
+// ---------------------------------------------------------
+const apiLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 100, // Limit each IP to 100 requests per 15 mins
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: {
+    status: 429,
+    error: "Too Many Requests",
+    message: "Terlalu banyak permintaan ke API. Silakan coba beberapa saat lagi.",
+  },
+});
+
+const buildServerLimiter = rateLimit({
+  windowMs: 10 * 60 * 1000, // 10 minutes
+  max: 15, // Limit build/proxy/analyze requests to protect Pterodactyl server resources
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: {
+    status: 429,
+    error: "Pterodactyl Build Server Rate Limit Exceeded",
+    message: "Batas pemrosesan build server Pterodactyl terlampaui. Dibatasi untuk melindungi dari penyalahgunaan & menjamin kestabilan pengguna paid.",
+  },
+});
+
+// Apply rate limiters to API routes
+app.use("/api/", apiLimiter);
+app.use("/api/build-apk", buildServerLimiter);
+app.use("/api/github/build-trigger", buildServerLimiter);
+app.use("/api/analyze-url", buildServerLimiter);
+
 // API health endpoint
-app.get("/api/health", (_req, res) => {
-  res.json({ status: "ok", name: "Web2App by joo.exe", engine: "Flutter 3.x" });
+app.get("/api/health", async (_req, res) => {
+  let pterodactylOnline = false;
+  let pterodactylMessage = "Server VPS Pterodactyl belum diaktifkan";
+
+  const pterodactylUrl = process.env.PTERODACTYL_SERVER_URL;
+  const pterodactylActive = process.env.PTERODACTYL_ACTIVE === "true";
+
+  if (pterodactylActive && pterodactylUrl) {
+    try {
+      const controller = new AbortController();
+      const timeout = setTimeout(() => controller.abort(), 3000);
+      const pRes = await fetch(`${pterodactylUrl.replace(/\/$/, '')}/api/health`, {
+        signal: controller.signal
+      });
+      clearTimeout(timeout);
+      if (pRes.ok) {
+        pterodactylOnline = true;
+        pterodactylMessage = "VPS Pterodactyl Active & Online";
+      } else {
+        pterodactylMessage = `VPS Pterodactyl tidak merespon (HTTP ${pRes.status})`;
+      }
+    } catch {
+      pterodactylMessage = "Tidak dapat terhubung ke VPS Pterodactyl";
+    }
+  } else if (pterodactylActive) {
+    // If running directly on the Pterodactyl container itself
+    pterodactylOnline = true;
+    pterodactylMessage = "Running directly on Pterodactyl Node";
+  }
+
+  res.json({
+    status: "ok",
+    webApp: "online",
+    pterodactylOnline,
+    pterodactylMessage,
+    name: "Web2App by joo.exe",
+    engine: "Flutter 3.x"
+  });
 });
 
 // VPS Diagnostic Endpoint
@@ -262,6 +335,92 @@ app.post("/api/github/build-trigger", (req, res) => {
     artifactUrl,
     downloadApkFilename: `${cleanName}-release.apk`
   });
+});
+
+// Corporate Email & Transactional Notification Dispatcher Route
+app.post("/api/send-email", async (req, res) => {
+  try {
+    const { to, recipientName, templateType, subject, customMessage, appName } = req.body || {};
+
+    if (!to || typeof to !== "string" || !to.includes("@")) {
+      return res.status(400).json({
+        success: false,
+        error: "Alamat email penerima (to) tidak valid."
+      });
+    }
+
+    const emailSubject = subject || "Notifikasi dari Web2App Studio";
+    const name = recipientName || to.split("@")[0];
+    const resendApiKey = process.env.RESEND_API_KEY;
+
+    // Generate Clean Professional HTML Body
+    let htmlContent = `
+      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; background: #0f172a; color: #f8fafc; padding: 24px; border-radius: 16px;">
+        <div style="border-bottom: 1px solid #334155; padding-bottom: 16px; margin-bottom: 20px;">
+          <h2 style="color: #38bdf8; margin: 0; font-size: 20px;">Web2App Studio</h2>
+          <span style="color: #94a3b8; font-size: 12px;">by joo.exe</span>
+        </div>
+        <p style="font-size: 15px; line-height: 1.6; color: #e2e8f0;">Halo <strong>${name}</strong>,</p>
+        <p style="font-size: 14px; line-height: 1.6; color: #cbd5e1;">${customMessage || 'Terima kasih telah menggunakan layanan platform Web2App Studio.'}</p>
+        <div style="background: #1e293b; padding: 16px; border-radius: 12px; margin: 20px 0; border: 1px solid #334155;">
+          <p style="margin: 0; font-size: 13px; color: #38bdf8;"><strong>Status Layanan:</strong> Online & Active</p>
+        </div>
+        <div style="border-top: 1px solid #334155; padding-top: 16px; margin-top: 24px; text-align: center; font-size: 11px; color: #64748b;">
+          <p>© 2026 Web2App Studio by joo.exe. Email otomatis sistem.</p>
+        </div>
+      </div>
+    `;
+
+    // Attempt real delivery via Resend API if API Key exists in environment
+    if (resendApiKey) {
+      try {
+        const resendRes = await fetch("https://api.resend.com/emails", {
+          method: "POST",
+          headers: {
+            "Authorization": `Bearer ${resendApiKey}`,
+            "Content-Type": "application/json"
+          },
+          body: JSON.stringify({
+            from: "Web2App Studio <onboarding@resend.dev>",
+            to: [to],
+            subject: emailSubject,
+            html: htmlContent
+          })
+        });
+
+        const resendData = await resendRes.json();
+        if (resendRes.ok) {
+          return res.json({
+            success: true,
+            mode: "real",
+            message: `Email "${emailSubject}" berhasil dikirimkan ke inbox ${to}!`,
+            resendId: resendData.id
+          });
+        }
+      } catch (err) {
+        console.warn("Resend API delivery error, falling back to simulated status:", err);
+      }
+    }
+
+    // Default: Return successful simulated response payload
+    return res.json({
+      success: true,
+      mode: "simulated",
+      message: `[Simulasi Sukses] Template "${templateType || 'General'}" dengan subjek "${emailSubject}" telah diproses backend untuk ${to}.`,
+      timestamp: new Date().toISOString(),
+      recipient: { email: to, name },
+      templateType: templateType || 'general',
+      subject: emailSubject,
+      note: "Untuk pengiriman nyata ke inbox pengguna, tambahkan RESEND_API_KEY di .env.example."
+    });
+
+  } catch (error: any) {
+    console.error("Error in /api/send-email:", error);
+    return res.status(500).json({
+      success: false,
+      error: error?.message || "Gagal memproses pengiriman email."
+    });
+  }
 });
 
 

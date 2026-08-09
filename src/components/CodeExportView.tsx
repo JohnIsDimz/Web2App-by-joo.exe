@@ -20,12 +20,26 @@ import {
   generateReadme,
 } from '../utils/flutterGenerator';
 
+import { User } from 'firebase/auth';
+import { UserProfileData, deductToken, isAdminUser } from '../lib/firebase';
+
 interface CodeExportViewProps {
   config: AppConfig;
   onExportZip: () => void;
+  currentUser?: User | null;
+  userProfile?: UserProfileData | null;
+  onOpenWalletModal?: () => void;
+  onOpenAuthModal?: () => void;
 }
 
-export const CodeExportView: React.FC<CodeExportViewProps> = ({ config, onExportZip }) => {
+export const CodeExportView: React.FC<CodeExportViewProps> = ({
+  config,
+  onExportZip,
+  currentUser,
+  userProfile,
+  onOpenWalletModal,
+  onOpenAuthModal,
+}) => {
   const [activeFile, setActiveFile] = useState<
     'main.dart' | 'pubspec.yaml' | 'AndroidManifest.xml' | 'Info.plist' | 'manifest.json' | 'README.md'
   >('main.dart');
@@ -34,6 +48,34 @@ export const CodeExportView: React.FC<CodeExportViewProps> = ({ config, onExport
   const [apkStep, setApkStep] = useState(0);
   const [apkBuilt, setApkBuilt] = useState(false);
   const [terminalLogs, setTerminalLogs] = useState<string[]>([]);
+
+  const handleStartBuild = async () => {
+    // Strictly require real authenticated user account
+    if (!currentUser) {
+      alert("Anda harus login terlebih dahulu untuk melakukan Build Production APK.");
+      onOpenAuthModal?.();
+      return;
+    }
+
+    const isVIP = userProfile?.isAdmin || userProfile?.subscriptionPlan === 'Enterprise' || (currentUser.email && isAdminUser(currentUser.email));
+    const tokens = userProfile?.tokens ?? 0;
+
+    if (!isVIP && tokens < 1) {
+      alert("Token Build Anda telah habis (0 Token). Silakan Beli Token atau Berlangganan Paket di Menu Dompet.");
+      onOpenWalletModal?.();
+      return;
+    }
+
+    try {
+      if (!isVIP) {
+        await deductToken(currentUser.uid, 1);
+      }
+      startRealtimeApkBuild();
+    } catch (err: any) {
+      alert("Gagal memproses token build: " + (err?.message || "Error server. Silakan coba lagi."));
+      onOpenWalletModal?.();
+    }
+  };
 
   const getFileContent = () => {
     switch (activeFile) {
@@ -116,26 +158,23 @@ export const CodeExportView: React.FC<CodeExportViewProps> = ({ config, onExport
       {/* Top Banner & Direct Export Callout */}
       <div className="bg-gradient-to-r from-sky-900/40 via-blue-900/30 to-slate-900 border border-sky-500/30 rounded-2xl p-6 flex flex-col md:flex-row md:items-center justify-between gap-4 shadow-xl">
         <div>
-          <h3 className="text-xl font-bold text-white flex items-center gap-2">
-            <Code className="w-5 h-5 text-sky-400" />
+          <h3 className="text-base sm:text-xl font-bold text-white flex items-center gap-2 leading-snug">
+            <Code className="w-5 h-5 text-sky-400 shrink-0" />
             <span>Proyek Web2App Real-Time Multi-Engine</span>
-            <span className="text-xs px-2.5 py-0.5 rounded-full font-mono bg-sky-500/20 text-sky-300 border border-sky-500/40 uppercase">
-              {config.engineType || 'flutter'}
-            </span>
           </h3>
           <p className="text-xs text-slate-300 mt-1 max-w-2xl">
-            Proyek Native dengan mesin <strong className="text-sky-300 uppercase">{config.engineType || 'flutter'}</strong> siap kompilasi untuk APK Android, iOS, & Desktop. Jalankan pipeline builder real-time atau unduh paket ZIP proyek lengkap.
+            Proyek Native dengan mesin {config.engineType === 'pwa_shell' ? 'PWA-SHELL' : (config.engineType || 'flutter')} siap kompilasi production untuk APK Android, iOS, & Desktop. Jalankan pipeline builder real-time di server cloud.
           </p>
         </div>
 
         <div className="flex items-center gap-2 flex-wrap shrink-0">
           <button
-            onClick={startRealtimeApkBuild}
+            onClick={handleStartBuild}
             disabled={isBuildingApk}
             className="flex items-center justify-center gap-2 px-4 py-2.5 bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 text-white font-bold text-xs rounded-xl shadow-lg shadow-emerald-600/30 transition-all active:scale-95"
           >
             <Smartphone className="w-4 h-4" />
-            <span>{isBuildingApk ? 'Membangun Real-Time...' : 'Build Real-Time APK'}</span>
+            <span>{isBuildingApk ? 'Proses Build Real-Time Running...' : 'Build Production APK'}</span>
           </button>
 
           <button
@@ -145,6 +184,7 @@ export const CodeExportView: React.FC<CodeExportViewProps> = ({ config, onExport
             <Download className="w-3.5 h-3.5" />
             <span>Unduh Proyek ZIP</span>
           </button>
+
         </div>
       </div>
 

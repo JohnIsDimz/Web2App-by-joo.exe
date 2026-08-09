@@ -64,7 +64,7 @@ export const UrlAnalyzerBar: React.FC<UrlAnalyzerBarProps> = ({
             type="text"
             value={inputUrl}
             onChange={(e) => setInputUrl(e.target.value)}
-            placeholder="Contoh: https://shopee.co.id atau detik.com"
+            placeholder="https://detik.com"
             className="w-full pl-11 pr-4 py-3 bg-slate-950/80 border border-slate-700/80 rounded-xl text-white placeholder-slate-500 text-sm focus:outline-none focus:ring-2 focus:ring-sky-500 focus:border-transparent transition-all"
           />
         </div>
@@ -87,6 +87,7 @@ export const UrlAnalyzerBar: React.FC<UrlAnalyzerBarProps> = ({
           )}
         </button>
       </form>
+
 
       {/* Inspection Results Banner */}
       {lastAnalysis && (

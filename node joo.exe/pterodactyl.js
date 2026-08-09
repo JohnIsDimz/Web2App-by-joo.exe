@@ -7,6 +7,7 @@ import express from 'express';
 import path from 'path';
 import fs from 'fs';
 import dotenv from 'dotenv';
+import rateLimit from 'express-rate-limit';
 import {
   inspectBuildEnvironment,
   triggerApkBuildJob,
@@ -17,10 +18,41 @@ dotenv.config();
 
 const app = express();
 
+// Trust proxy header when running behind reverse proxy / Cloud Run / Pterodactyl wings
+app.set('trust proxy', 1);
+
 // Pterodactyl panel dynamically sets SERVER_PORT or PORT
 const PORT = Number(process.env.SERVER_PORT || process.env.PORT || 3000);
 
 app.use(express.json());
+
+// Rate limiters for Pterodactyl dedicated container protection
+const apiLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 100,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: {
+    status: 429,
+    error: 'Too Many Requests',
+    message: 'Terlalu banyak permintaan API. Silakan coba beberapa saat lagi.',
+  },
+});
+
+const pterodactylBuildLimiter = rateLimit({
+  windowMs: 10 * 60 * 1000, // 10 minutes
+  max: 15, // Limit 15 APK build requests per IP
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: {
+    status: 429,
+    error: 'Pterodactyl Build Server Rate Limit Exceeded',
+    message: 'Batas pemrosesan kompilasi APK Pterodactyl terlampaui. Server dilindungi untuk menjaga kestabilan pengguna paid.',
+  },
+});
+
+app.use('/api/', apiLimiter);
+app.use('/api/build-apk', pterodactylBuildLimiter);
 
 // 1. Health check endpoint
 app.get('/api/health', (_req, res) => {

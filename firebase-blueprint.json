@@ -1,0 +1,32 @@
+{
+  "entities": {
+    "users": {
+      "title": "Users",
+      "description": "User profile and authentication data, balance, tokens, and subscription tier",
+      "properties": {
+        "email": { "type": "string", "description": "User email address" },
+        "displayName": { "type": "string", "description": "User display name" },
+        "photoURL": { "type": "string", "description": "Avatar photo URL" },
+        "providerId": { "type": "string", "description": "Auth provider e.g. google.com or password" },
+        "balance": { "type": "number", "description": "User balance in IDR" },
+        "tokens": { "type": "number", "description": "User available AI build tokens" },
+        "subscriptionPlan": { "type": "string", "description": "Subscription tier: Free, Starter, Pro, Enterprise" },
+        "subscriptionExpiry": { "type": "string", "description": "ISO timestamp for subscription expiry" },
+        "lastLogin": { "type": "string", "description": "ISO timestamp of last login" }
+      },
+      "required": ["email"]
+    },
+    "transactions": {
+      "title": "User Transactions",
+      "description": "Top-up, token purchase, and subscription history",
+      "properties": {
+        "userId": { "type": "string", "description": "User ID" },
+        "type": { "type": "string", "description": "topup, token_purchase, subscription" },
+        "amount": { "type": "number", "description": "Amount in IDR" },
+        "description": { "type": "string", "description": "Transaction description" },
+        "timestamp": { "type": "string", "description": "ISO timestamp" }
+      },
+      "required": ["userId", "amount", "type"]
+    }
+  }
+}
