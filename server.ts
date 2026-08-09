@@ -11,7 +11,9 @@ const PORT = Number(process.env.PORT || process.env.SERVER_PORT || 3000);
 // Trust proxy header when running behind reverse proxy / Cloud Run
 app.set("trust proxy", 1);
 
-app.use(express.json());
+// Increase JSON & urlencoded body limits to handle image uploads and app configs
+app.use(express.json({ limit: "50mb" }));
+app.use(express.urlencoded({ limit: "50mb", extended: true }));
 
 // ---------------------------------------------------------
 // Rate Limiter Configurations for Pterodactyl Build Server Protection

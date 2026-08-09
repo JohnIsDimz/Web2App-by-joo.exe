@@ -53,10 +53,14 @@ export const SavedAppsModal: React.FC<SavedAppsModalProps> = ({
               >
                 <div className="flex items-center gap-3 overflow-hidden">
                   <div
-                    className="w-10 h-10 rounded-xl flex items-center justify-center text-xl shrink-0 shadow"
+                    className="w-10 h-10 rounded-xl flex items-center justify-center text-xl shrink-0 shadow overflow-hidden p-0.5"
                     style={{ backgroundColor: app.themeColor }}
                   >
-                    <span>{app.iconEmoji}</span>
+                    {app.iconUrl ? (
+                      <img src={app.iconUrl} alt={app.appName} className="w-full h-full object-cover rounded-lg" />
+                    ) : (
+                      <span>{app.iconEmoji}</span>
+                    )}
                   </div>
 
                   <div className="overflow-hidden">

@@ -245,14 +245,18 @@ export const DeviceSimulator: React.FC<DeviceSimulatorProps> = ({
               </div>
             </div>
 
-            {/* Optional Flutter App Header */}
+            {/* Optional App Header */}
             {config.navMode === 'header' && (
               <div
                 className="px-3 py-2 flex items-center justify-between text-white shadow-md z-30"
                 style={{ backgroundColor: config.themeColor }}
               >
                 <div className="flex items-center space-x-2">
-                  <span className="text-base">{config.iconEmoji}</span>
+                  {config.iconUrl ? (
+                    <img src={config.iconUrl} alt="App Icon" className="w-5 h-5 object-cover rounded-md shrink-0" />
+                  ) : (
+                    <span className="text-base">{config.iconEmoji}</span>
+                  )}
                   <span className="font-bold text-sm truncate max-w-[150px]">
                     {config.appName}
                   </span>
@@ -274,8 +278,12 @@ export const DeviceSimulator: React.FC<DeviceSimulatorProps> = ({
                 className="absolute inset-0 z-50 flex flex-col items-center justify-center p-6 text-white text-center animate-fadeIn"
                 style={{ backgroundColor: config.themeColor }}
               >
-                <div className="w-20 h-20 rounded-2xl bg-white text-slate-950 flex items-center justify-center text-4xl shadow-2xl mb-4 transform scale-105 transition-transform">
-                  {config.iconEmoji}
+                <div className="w-20 h-20 rounded-2xl bg-white text-slate-950 flex items-center justify-center text-4xl shadow-2xl mb-4 transform scale-105 transition-transform overflow-hidden p-1">
+                  {config.iconUrl ? (
+                    <img src={config.iconUrl} alt="App Icon" className="w-full h-full object-cover rounded-xl" />
+                  ) : (
+                    config.iconEmoji
+                  )}
                 </div>
                 <h2 className="text-2xl font-bold tracking-tight mb-1">{config.splashTitle}</h2>
                 <p className="text-xs opacity-90 mb-8">{config.splashTagline}</p>

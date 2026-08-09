@@ -28,6 +28,9 @@ import {
   Terminal,
   Laptop,
   CheckCircle2,
+  Upload,
+  Image as ImageIcon,
+  X,
 } from 'lucide-react';
 import { AppConfig } from '../types';
 import { UserProfileData } from '../lib/firebase';
@@ -201,11 +204,11 @@ export const Configurator: React.FC<ConfiguratorProps> = ({
 
       {/* TAB 1: GENERAL IDENTITY */}
       {activeTab === 'general' && (
-        <div className="space-y-4">
+        <div className="space-y-5">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
               <label className="block text-xs font-semibold text-slate-300 mb-1.5">
-                Nama Aplikasi Flutter
+                Nama Aplikasi
               </label>
               <input
                 type="text"
@@ -253,6 +256,117 @@ export const Configurator: React.FC<ConfiguratorProps> = ({
                 className="w-full px-3.5 py-2.5 bg-slate-950 border border-slate-700/80 rounded-xl text-white text-sm focus:outline-none focus:ring-2 focus:ring-sky-500"
                 placeholder="joo.exe"
               />
+            </div>
+          </div>
+
+          {/* Sistem Upload/Terapkan Icon App (Di bawah Developer / Author) */}
+          <div className="p-4 bg-slate-950/80 border border-slate-800 rounded-2xl space-y-3">
+            <div className="flex items-center justify-between flex-wrap gap-2">
+              <div>
+                <label className="text-xs font-bold text-sky-400 flex items-center gap-1.5">
+                  <ImageIcon className="w-4 h-4 text-sky-400" />
+                  <span>Icon App Custom (Support Gambar PNG / JPG / SVG / WebP)</span>
+                </label>
+                <p className="text-[11px] text-slate-400 mt-0.5">
+                  Unggah file gambar logo dari perangkat Anda atau masukkan link URL gambar PNG untuk diterapkan sebagai icon aplikasi native.
+                </p>
+              </div>
+              <span className="text-[10px] bg-emerald-500/10 text-emerald-300 border border-emerald-500/30 px-2 py-0.5 rounded-full font-mono font-medium">
+                PNG Support Ready
+              </span>
+            </div>
+
+            <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4 pt-1">
+              {/* Box Preview Icon Ukuran Kecil */}
+              <div className="flex items-center gap-3 shrink-0 bg-slate-900/90 p-2.5 rounded-xl border border-slate-800">
+                <div className="w-12 h-12 rounded-xl bg-slate-950 border border-slate-700 flex items-center justify-center overflow-hidden shadow-md relative shrink-0">
+                  {config.iconUrl ? (
+                    <img
+                      src={config.iconUrl}
+                      alt="App Icon Preview"
+                      className="w-full h-full object-cover"
+                    />
+                  ) : (
+                    <span className="text-2xl">{config.iconEmoji || ' App'}</span>
+                  )}
+                </div>
+
+                <div>
+                  <span className="text-xs font-bold text-white block">Preview Icon</span>
+                  <span className="text-[10px] text-slate-400 block font-mono">
+                    {config.iconUrl ? 'PNG Custom Aktif' : `Emoji: ${config.iconEmoji}`}
+                  </span>
+                </div>
+              </div>
+
+              {/* Control Upload File & Input URL */}
+              <div className="flex-1 w-full space-y-2">
+                <div className="flex items-center gap-2 flex-wrap">
+                  <label className="cursor-pointer px-3.5 py-2 bg-sky-600 hover:bg-sky-500 text-white rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 shrink-0 shadow-sm hover:shadow-sky-500/20">
+                    <Upload className="w-3.5 h-3.5" />
+                    <span>Upload Gambar PNG / JPG</span>
+                    <input
+                      type="file"
+                      accept="image/png, image/jpeg, image/webp, image/svg+xml"
+                      onChange={(e) => {
+                        const file = e.target.files?.[0];
+                        if (file) {
+                          if (file.size > 5 * 1024 * 1024) {
+                            alert('Ukuran file gambar maksimal 5MB!');
+                            return;
+                          }
+                          const reader = new FileReader();
+                          reader.onload = (event) => {
+                            const result = event.target?.result as string;
+                            if (result) {
+                              // Compress to 256x256 PNG canvas for optimal performance
+                              const img = new Image();
+                              img.onload = () => {
+                                const canvas = document.createElement('canvas');
+                                canvas.width = 256;
+                                canvas.height = 256;
+                                const ctx = canvas.getContext('2d');
+                                if (ctx) {
+                                  ctx.drawImage(img, 0, 0, 256, 256);
+                                  const compressedDataUrl = canvas.toDataURL('image/png', 0.9);
+                                  onChangeConfig({ iconUrl: compressedDataUrl });
+                                } else {
+                                  onChangeConfig({ iconUrl: result });
+                                }
+                              };
+                              img.onerror = () => {
+                                onChangeConfig({ iconUrl: result });
+                              };
+                              img.src = result;
+                            }
+                          };
+                          reader.readAsDataURL(file);
+                        }
+                      }}
+                      className="hidden"
+                    />
+                  </label>
+
+                  {config.iconUrl && (
+                    <button
+                      type="button"
+                      onClick={() => onChangeConfig({ iconUrl: '' })}
+                      className="px-3 py-2 bg-red-500/10 hover:bg-red-500/20 text-red-400 border border-red-500/30 rounded-xl text-xs font-semibold transition-colors flex items-center gap-1"
+                    >
+                      <X className="w-3.5 h-3.5" />
+                      <span>Hapus Gambar PNG</span>
+                    </button>
+                  )}
+                </div>
+
+                <input
+                  type="text"
+                  value={config.iconUrl || ''}
+                  onChange={(e) => onChangeConfig({ iconUrl: e.target.value })}
+                  placeholder="Atau masukkan URL gambar PNG (https://domain.com/logo.png)"
+                  className="w-full px-3 py-2 bg-slate-900 border border-slate-700/80 rounded-xl text-white text-xs font-mono focus:outline-none focus:ring-2 focus:ring-sky-500"
+                />
+              </div>
             </div>
           </div>
         </div>

@@ -24,7 +24,7 @@ import {
   onSnapshot
 } from 'firebase/firestore';
 import firebaseConfigData from '../../firebase-applet-config.json';
-import { saveEncryptedUserSession, loadEncryptedUserSession } from './cookieSecurity';
+import { saveEncryptedUserSession, loadEncryptedUserSession, clearEncryptedUserSession } from './cookieSecurity';
 
 const firebaseConfig = {
   apiKey: firebaseConfigData.apiKey,
@@ -165,7 +165,7 @@ export async function saveUserProfile(user: User): Promise<UserProfileData & { i
         updatedData.tokens = 999999;
       } else {
         if (existing.tokens === undefined || existing.tokens === null || typeof existing.tokens !== 'number') {
-          updatedData.tokens = 0;
+          updatedData.tokens = 10; // Default welcome bonus for existing accounts missing token field
         }
         if (existing.balance === undefined || existing.balance === null || typeof existing.balance !== 'number') {
           updatedData.balance = 0;
@@ -179,7 +179,7 @@ export async function saveUserProfile(user: User): Promise<UserProfileData & { i
       return {
         ...existing,
         ...updatedData,
-        tokens: updatedData.tokens ?? existing.tokens ?? 0,
+        tokens: updatedData.tokens ?? existing.tokens ?? 10,
         balance: updatedData.balance ?? existing.balance ?? 0,
         subscriptionPlan: updatedData.subscriptionPlan ?? existing.subscriptionPlan ?? 'Free',
         isNewUser: false
@@ -226,7 +226,7 @@ export async function saveUserProfile(user: User): Promise<UserProfileData & { i
       photoURL: user.photoURL || null,
       providerId: user.providerData[0]?.providerId || 'password',
       balance: 0,
-      tokens: 0,
+      tokens: 10,
       subscriptionPlan: 'Free',
       subscriptionExpiry: null,
       lastLogin: new Date().toISOString(),
@@ -263,7 +263,7 @@ export function subscribeUserProfile(uid: string, callback: (profile: UserProfil
         photoURL: auth.currentUser.photoURL || null,
         providerId: 'password',
         balance: admin ? 999999999 : 0,
-        tokens: admin ? 999999 : 0,
+        tokens: admin ? 999999 : 10,
         subscriptionPlan: admin ? 'Enterprise' : 'Free',
         subscriptionExpiry: admin ? '2099-12-31T23:59:59.000Z' : null,
         lastLogin: new Date().toISOString(),
@@ -289,7 +289,7 @@ export function subscribeUserProfile(uid: string, callback: (profile: UserProfil
         data.tokens = Math.max(data.tokens || 0, 999999);
       } else {
         if (data.tokens === undefined || data.tokens === null || typeof data.tokens !== 'number') {
-          data.tokens = 0;
+          data.tokens = 10;
         }
         if (data.balance === undefined || data.balance === null || typeof data.balance !== 'number') {
           data.balance = 0;
@@ -320,6 +320,9 @@ async function getUserProfileSafe(uid: string): Promise<UserProfileData> {
     const snap = await getDoc(userRef);
     if (snap.exists()) {
       const data = snap.data() as UserProfileData;
+      if (data.tokens === undefined || data.tokens === null || typeof data.tokens !== 'number') {
+        data.tokens = isAdminUser(data.email) ? 999999 : 10;
+      }
       try {
         localStorage.setItem(`web2app_user_profile_${uid}`, JSON.stringify(data));
       } catch (e) {}
@@ -350,7 +353,7 @@ async function getUserProfileSafe(uid: string): Promise<UserProfileData> {
     photoURL: currentUser?.photoURL || null,
     providerId: 'password',
     balance: isDevAdmin ? 999999999 : 0,
-    tokens: isDevAdmin ? 999999 : 0,
+    tokens: isDevAdmin ? 999999 : 10,
     subscriptionPlan: isDevAdmin ? 'Enterprise' : 'Free',
     subscriptionExpiry: isDevAdmin ? '2099-12-31T23:59:59.000Z' : null,
     lastLogin: new Date().toISOString(),
@@ -579,6 +582,7 @@ export async function getUserTransactions(uid: string): Promise<UserTransaction[
  * Sign out from Firebase
  */
 export async function signOutUser(): Promise<void> {
+  clearEncryptedUserSession();
   await firebaseSignOut(auth);
 }
 

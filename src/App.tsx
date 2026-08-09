@@ -201,7 +201,7 @@ export default function App() {
             photoURL: user.photoURL || null,
             providerId: 'password',
             balance: isAdmin ? 999999999 : 0,
-            tokens: isAdmin ? 999999 : 0,
+            tokens: isAdmin ? 999999 : 10,
             subscriptionPlan: isAdmin ? 'Enterprise' : 'Free',
             subscriptionExpiry: isAdmin ? '2099-12-31T23:59:59.000Z' : null,
             lastLogin: new Date().toISOString(),

@@ -90,31 +90,61 @@ export function eraseCookie(name: string) {
 }
 
 /**
+ * Clear user session caches on logout or account switch
+ */
+export function clearEncryptedUserSession() {
+  eraseCookie(COOKIE_NAME_SESSION);
+  eraseCookie(COOKIE_NAME_TOKEN_DATA);
+  try {
+    localStorage.removeItem('w2a_fast_profile_latest');
+    Object.keys(localStorage).forEach(key => {
+      if (key.startsWith('w2a_fast_profile_')) {
+        localStorage.removeItem(key);
+      }
+    });
+  } catch (e) {}
+}
+
+/**
  * Save user profile state securely to encrypted cookies & localStorage
  */
 export function saveEncryptedUserSession(profile: UserProfileData) {
   if (!profile) return;
   
+  const safeTokens = (profile.tokens !== undefined && profile.tokens !== null && typeof profile.tokens === 'number')
+    ? profile.tokens
+    : (profile.isAdmin ? 999999 : 10);
+
+  const safeBalance = (profile.balance !== undefined && profile.balance !== null && typeof profile.balance === 'number')
+    ? profile.balance
+    : (profile.isAdmin ? 999999999 : 0);
+
+  const cleanProfile: UserProfileData = {
+    ...profile,
+    tokens: safeTokens,
+    balance: safeBalance
+  };
+
   const payload = {
-    uid: profile.uid,
-    email: profile.email,
-    balance: profile.balance,
-    tokens: profile.tokens,
-    subscriptionPlan: profile.subscriptionPlan,
+    uid: cleanProfile.uid,
+    email: cleanProfile.email,
+    balance: cleanProfile.balance,
+    tokens: cleanProfile.tokens,
+    subscriptionPlan: cleanProfile.subscriptionPlan,
     ts: Date.now()
   };
 
   const encrypted = encryptPayload(payload);
   if (encrypted) {
     setSecureCookie(COOKIE_NAME_SESSION, encrypted, 30);
-    setSecureCookie(COOKIE_NAME_TOKEN_DATA, `${profile.tokens}_${profile.balance}`, 30);
+    setSecureCookie(COOKIE_NAME_TOKEN_DATA, `${cleanProfile.tokens}_${cleanProfile.balance}`, 30);
   }
 
   // Backup in LocalStorage for instant zero-latency UI sync
   try {
-    localStorage.setItem(`w2a_fast_profile_${profile.uid}`, JSON.stringify(profile));
-    localStorage.setItem('w2a_fast_profile_latest', JSON.stringify(profile));
-    window.dispatchEvent(new CustomEvent('w2a_profile_updated', { detail: profile }));
+    localStorage.setItem(`w2a_fast_profile_${cleanProfile.uid}`, JSON.stringify(cleanProfile));
+    localStorage.setItem('w2a_fast_profile_latest', JSON.stringify(cleanProfile));
+    window.dispatchEvent(new CustomEvent('w2a_profile_updated', { detail: cleanProfile }));
   } catch (e) {}
 }
 
