@@ -360,15 +360,19 @@ export default function App() {
         const data = await response.json();
         if (data && data.domain) {
           setLastAnalysis(data);
+          setIsAnalyzingUrl(false);
           return data;
         }
       }
     } catch (error) {
       console.warn('Backend API /api/analyze-url unreachable or running on static host (Cloudflare Pages), using instant client-side fallback:', error);
+    } finally {
+      setIsAnalyzingUrl(false);
     }
 
     // Fallback guarantees that analysis inspection card is ALWAYS rendered seamlessly on both AI Studio & Cloudflare Pages
     setLastAnalysis(fallbackAnalysis);
+    setIsAnalyzingUrl(false);
     return fallbackAnalysis;
   };
 
