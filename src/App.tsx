@@ -13,7 +13,7 @@ import { ServerStatus } from './components/ServerStatus';
 import { AppConfig, WebSiteAnalysis } from './types';
 import { downloadFlutterProjectZip } from './utils/zipExporter';
 import { onAuthChange, subscribeUserProfile, saveUserProfile, isAdminUser, UserProfileData, DEMO_USER_PROFILE, deductToken } from './lib/firebase';
-import { syncConfigToSupabase } from './lib/supabase';
+import { syncConfigToSqlDatabase } from './lib/sqlDatabase';
 
 const DEFAULT_CONFIG: AppConfig = {
   id: 'default-app',
@@ -233,7 +233,7 @@ export default function App() {
     };
   }, []);
 
-  // Auto-persist user-scoped config and sync to encrypted Supabase vault with real-time pulsing indicator
+  // Auto-persist user-scoped config and sync to encrypted Full SQL database vault with real-time pulsing indicator
   useEffect(() => {
     const userKey = currentUser ? currentUser.uid : 'guest';
     localStorage.setItem(`web2app_config_${userKey}`, JSON.stringify(config));
@@ -244,7 +244,7 @@ export default function App() {
 
     const syncTimer = setTimeout(async () => {
       try {
-        const res = await syncConfigToSupabase(userKey, config.appName, config);
+        const res = await syncConfigToSqlDatabase(userKey, config.appName, config);
         if (isMounted) {
           if (res.success) {
             setSaveStatus('saved');
@@ -272,7 +272,7 @@ export default function App() {
   const handleForceSync = async () => {
     setSaveStatus('saving');
     const userId = currentUser ? currentUser.uid : 'guest-user';
-    const res = await syncConfigToSupabase(userId, config.appName, config);
+    const res = await syncConfigToSqlDatabase(userId, config.appName, config);
     if (res.success) {
       setSaveStatus('saved');
       const now = new Date().toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' });

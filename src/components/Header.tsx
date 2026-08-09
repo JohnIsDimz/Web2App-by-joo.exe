@@ -74,7 +74,7 @@ export const Header: React.FC<HeaderProps> = ({
                         ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/50 shadow-sm shadow-emerald-500/20 scale-105'
                         : 'bg-slate-800/80 text-emerald-400/90 border border-slate-700/60 hover:border-emerald-500/40'
                     }`}
-                    title={saveStatus === 'saved' ? `Konfigurasi tersimpan di cloud (${lastSavedTime || 'Auto-Saved'}). Klik untuk sync ulang.` : 'Status Auto-Save Cloud'}
+                    title={saveStatus === 'saved' ? `Konfigurasi tersimpan di Database SQL Encrypted (${lastSavedTime || 'Auto-Saved'}). Klik untuk sync ulang.` : 'Status Auto-Save Database SQL'}
                   >
                     {saveStatus === 'saving' ? (
                       <>
