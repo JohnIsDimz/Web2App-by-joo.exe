@@ -58,13 +58,13 @@ export const Configurator: React.FC<ConfiguratorProps> = ({
     const isProOrHigher = ['flutter', 'kotlin', 'swift', 'capacitor', 'react-native', 'tauri'].includes(engine);
 
     if (isEnterpriseOnly && !isVIP) {
-      alert(`Engine ${engine.toUpperCase()} adalah fitur eksklusif Paket Enterprise VIP (Rp 50.000 / bulan). Silakan tingkatkan paket di Dompet.`);
+      alert(`Engine ${engine.toUpperCase()} adalah fitur eksklusif Paket Enterprise VIP (Rp 60.000 / bulan). Silakan tingkatkan paket di Dompet.`);
       onOpenWalletModal();
       return;
     }
 
     if (isProOrHigher && !isProOrVIP) {
-      alert(`Engine ${engine.toUpperCase()} memerlukan Paket Pro Builder (Rp 25.000 / bulan) atau Enterprise VIP. Paket Starter (Rp 10.000) hanya mendapatkan Basic WebView / PWA Shell.`);
+      alert(`Engine ${engine.toUpperCase()} memerlukan Paket Pro Builder (Rp 30.000 / bulan) atau Enterprise VIP. Engine PWA Standalone dapat digunakan secara Gratis!`);
       onOpenWalletModal();
       return;
     }
@@ -263,14 +263,14 @@ export const Configurator: React.FC<ConfiguratorProps> = ({
               <div className="p-3.5 bg-amber-500/10 border border-amber-500/30 rounded-xl text-amber-200 text-xs flex items-center justify-between gap-3 mb-4">
                 <div className="flex items-center gap-2">
                   <Lock className="w-4 h-4 text-amber-400 shrink-0" />
-                  <span>Engine <strong>{config.engineType.toUpperCase()}</strong> adalah fitur eksklusif paket <strong>Pro Builder (Rp 25.000)</strong> & <strong>Enterprise VIP</strong>.</span>
+                  <span>Engine <strong>{config.engineType.toUpperCase()}</strong> adalah fitur eksklusif paket <strong>Pro Builder (Rp 30.000)</strong> & <strong>Enterprise VIP</strong>.</span>
                 </div>
                 <button
                   type="button"
                   onClick={onOpenWalletModal}
                   className="px-3.5 py-1.5 bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-400 hover:to-orange-400 text-slate-950 font-bold text-xs rounded-lg shadow shrink-0 transition-all cursor-pointer"
                 >
-                  Upgrade Rp 25.000
+                  Upgrade Rp 30.000
                 </button>
               </div>
             )}
@@ -290,7 +290,7 @@ export const Configurator: React.FC<ConfiguratorProps> = ({
                     <Zap className="w-4 h-4 text-sky-400" />
                     <span>Flutter 3.x Engine (Rekomendasi)</span>
                   </span>
-                  <span className="text-[10px] bg-amber-500/20 text-amber-300 border border-amber-500/30 px-2 py-0.5 rounded-full font-bold">Pro 25k</span>
+                  <span className="text-[10px] bg-amber-500/20 text-amber-300 border border-amber-500/30 px-2 py-0.5 rounded-full font-bold">Pro 30k</span>
                 </div>
                 <p className="text-xs text-slate-300 mb-2">
                   Menggunakan `webview_flutter` versi terbaru, hardware acceleration GPU, smart cache, and multi-platform compilation (Android, iOS, Web, Desktop).
@@ -316,7 +316,7 @@ export const Configurator: React.FC<ConfiguratorProps> = ({
                     <Smartphone className="w-4 h-4 text-emerald-400" />
                     <span>Android Jetpack Compose</span>
                   </span>
-                  <span className="text-[10px] bg-amber-500/20 text-amber-300 border border-amber-500/30 px-2 py-0.5 rounded-full font-bold">Pro 25k</span>
+                  <span className="text-[10px] bg-amber-500/20 text-amber-300 border border-amber-500/30 px-2 py-0.5 rounded-full font-bold">Pro 30k</span>
                 </div>
                 <p className="text-xs text-slate-300 mb-2">
                   Kotlin + AndroidX WebKit + Material3 Design. Ukuran APK sangat kecil dan dioptimalkan khusus untuk ekosistem Android.
@@ -342,7 +342,7 @@ export const Configurator: React.FC<ConfiguratorProps> = ({
                     <Smartphone className="w-4 h-4 text-purple-400" />
                     <span>iOS Swift / SwiftUI</span>
                   </span>
-                  <span className="text-[10px] bg-amber-500/20 text-amber-300 border border-amber-500/30 px-2 py-0.5 rounded-full font-bold">Pro 25k</span>
+                  <span className="text-[10px] bg-amber-500/20 text-amber-300 border border-amber-500/30 px-2 py-0.5 rounded-full font-bold">Pro 30k</span>
                 </div>
                 <p className="text-xs text-slate-300 mb-2">
                   SwiftUI + WKWebView + Apple Push Notification Service (APNS). Performa 60FPS murni untuk iPhone & iPad.
@@ -368,7 +368,7 @@ export const Configurator: React.FC<ConfiguratorProps> = ({
                     <Layers className="w-4 h-4 text-amber-400" />
                     <span>Capacitor / PWA Hybrid</span>
                   </span>
-                  <span className="text-[10px] bg-amber-500/20 text-amber-300 border border-amber-500/30 px-2 py-0.5 rounded-full font-bold">Pro 25k</span>
+                  <span className="text-[10px] bg-amber-500/20 text-amber-300 border border-amber-500/30 px-2 py-0.5 rounded-full font-bold">Pro 30k</span>
                 </div>
                 <p className="text-xs text-slate-300 mb-2">
                   Capacitor 6.x runtime dengan Service Worker caching dan akses penuh ke Native Plugins web JS.
@@ -394,7 +394,7 @@ export const Configurator: React.FC<ConfiguratorProps> = ({
                     <Code className="w-4 h-4 text-cyan-400" />
                     <span>React Native / Expo Engine</span>
                   </span>
-                  <span className="text-[10px] bg-amber-500/20 text-amber-300 border border-amber-500/30 px-2 py-0.5 rounded-full font-bold">Pro 25k</span>
+                  <span className="text-[10px] bg-amber-500/20 text-amber-300 border border-amber-500/30 px-2 py-0.5 rounded-full font-bold">Pro 30k</span>
                 </div>
                 <p className="text-xs text-slate-300 mb-2">
                   React Native 0.74 + Expo Webview shell. Dioptimalkan untuk kompatibilitas JavaScript modern dan Fast Refresh.
@@ -420,7 +420,7 @@ export const Configurator: React.FC<ConfiguratorProps> = ({
                     <Cpu className="w-4 h-4 text-rose-400" />
                     <span>Tauri 2.0 Rust Engine</span>
                   </span>
-                  <span className="text-[10px] bg-amber-500/20 text-amber-300 border border-amber-500/30 px-2 py-0.5 rounded-full font-bold">Pro 25k</span>
+                  <span className="text-[10px] bg-amber-500/20 text-amber-300 border border-amber-500/30 px-2 py-0.5 rounded-full font-bold">Pro 30k</span>
                 </div>
                 <p className="text-xs text-slate-300 mb-2">
                   Engine Tauri versi 2 (Rust + WebView2/WKWebView). Ukuran executable sangat kecil (&lt; 5MB) dan keamanan tingkat tinggi.
@@ -446,7 +446,7 @@ export const Configurator: React.FC<ConfiguratorProps> = ({
                     <Globe className="w-4 h-4 text-indigo-400" />
                     <span>PWA Standalone WebShell</span>
                   </span>
-                  <span className="text-[10px] bg-sky-500/20 text-sky-300 border border-sky-500/30 px-2 py-0.5 rounded-full font-bold">Starter 10k</span>
+                  <span className="text-[10px] bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 px-2 py-0.5 rounded-full font-bold">Gratis / Free</span>
                 </div>
                 <p className="text-xs text-slate-300 mb-2">
                   Manifest V3 Progressive Web App dengan Workbox Service Worker offline caching. Tanpa butuh SDK Android/iOS.
@@ -472,7 +472,7 @@ export const Configurator: React.FC<ConfiguratorProps> = ({
                     <Zap className="w-4 h-4 text-purple-400" />
                     <span>Kotlin Multiplatform (KMP)</span>
                   </span>
-                  <span className="text-[10px] bg-purple-500/20 text-purple-300 border border-purple-500/30 px-2 py-0.5 rounded-full font-bold">Enterprise 50k</span>
+                  <span className="text-[10px] bg-purple-500/20 text-purple-300 border border-purple-500/30 px-2 py-0.5 rounded-full font-bold">Enterprise 60k</span>
                 </div>
                 <p className="text-xs text-slate-300 mb-2">
                   KMP shared business logic + Compose Multiplatform UI. Performa kompilasi murni LLVM/JVM untuk Android & iOS.
@@ -498,7 +498,7 @@ export const Configurator: React.FC<ConfiguratorProps> = ({
                     <Smartphone className="w-4 h-4 text-emerald-400" />
                     <span>Hotwire Turbo Native Engine</span>
                   </span>
-                  <span className="text-[10px] bg-purple-500/20 text-purple-300 border border-purple-500/30 px-2 py-0.5 rounded-full font-bold">Enterprise 50k</span>
+                  <span className="text-[10px] bg-purple-500/20 text-purple-300 border border-purple-500/30 px-2 py-0.5 rounded-full font-bold">Enterprise 60k</span>
                 </div>
                 <p className="text-xs text-slate-300 mb-2">
                   Engine navigasi Hotwire/Turbo untuk menyatukan halaman web real-time server dengan transisi layar native super mulus.
@@ -524,7 +524,7 @@ export const Configurator: React.FC<ConfiguratorProps> = ({
                     <Cpu className="w-4 h-4 text-blue-400" />
                     <span>OpenHarmony (ArkUI Engine)</span>
                   </span>
-                  <span className="text-[10px] bg-purple-500/20 text-purple-300 border border-purple-500/30 px-2 py-0.5 rounded-full font-bold">Enterprise 50k</span>
+                  <span className="text-[10px] bg-purple-500/20 text-purple-300 border border-purple-500/30 px-2 py-0.5 rounded-full font-bold">Enterprise 60k</span>
                 </div>
                 <p className="text-xs text-slate-300 mb-2">
                   Mesin ArkUI & WebKit Huawei HarmonyOS NEXT untuk ekosistem perangkat pintar global terbaru.
@@ -550,7 +550,7 @@ export const Configurator: React.FC<ConfiguratorProps> = ({
                     <Code className="w-4 h-4 text-amber-400" />
                     <span>Electron Pro Desktop Engine</span>
                   </span>
-                  <span className="text-[10px] bg-purple-500/20 text-purple-300 border border-purple-500/30 px-2 py-0.5 rounded-full font-bold">Enterprise 50k</span>
+                  <span className="text-[10px] bg-purple-500/20 text-purple-300 border border-purple-500/30 px-2 py-0.5 rounded-full font-bold">Enterprise 60k</span>
                 </div>
                 <p className="text-xs text-slate-300 mb-2">
                   Chromium 126 + Node.js 20 wrapper produksi dengan fitur tray bar, installer `.exe`, `.dmg`, `.AppImage`, & auto-updater.
@@ -774,14 +774,14 @@ export const Configurator: React.FC<ConfiguratorProps> = ({
             <div className="p-3.5 bg-amber-500/10 border border-amber-500/30 rounded-xl text-amber-200 text-xs flex items-center justify-between gap-3">
               <div className="flex items-center gap-2">
                 <Lock className="w-4 h-4 text-amber-400 shrink-0" />
-                <span>Fitur Injeksi Custom CSS & JS memerlukan Paket <strong>Pro Builder (Rp 25.000)</strong> atau <strong>Enterprise VIP</strong>.</span>
+                <span>Fitur Injeksi Custom CSS & JS memerlukan Paket <strong>Pro Builder (Rp 30.000)</strong> atau <strong>Enterprise VIP</strong>.</span>
               </div>
               <button
                 type="button"
                 onClick={onOpenWalletModal}
                 className="px-3.5 py-1.5 bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-400 hover:to-orange-400 text-slate-950 font-bold text-xs rounded-lg shadow shrink-0 transition-all cursor-pointer"
               >
-                Upgrade Rp 25.000
+                Upgrade Rp 30.000
               </button>
             </div>
           )}

@@ -455,11 +455,11 @@ export const EmailModal: React.FC<EmailModalProps> = ({
                     <div className="space-y-3">
                       <h3 className="text-sm font-bold text-purple-300">🎁 Penawaran Spesial: Paket Pro Builder & Bonus Token!</h3>
                       <p className="text-slate-300 leading-relaxed">
-                        Kabar gembira {recipientName}! Tingkatkan paket ke <strong>Pro Builder (Rp 25.000 / bulan)</strong> dan dapatkan bonus bulanan <strong>25 Token Build</strong> + Akses KMP & Custom Code Ingestion.
+                        Kabar gembira {recipientName}! Tingkatkan paket ke <strong>Pro Builder (Rp 30.000 / bulan)</strong> dan dapatkan bonus bulanan <strong>25 Token Build</strong> + Akses KMP & Custom Code Ingestion.
                       </p>
                       <div className="bg-purple-500/10 border border-purple-500/30 p-3 rounded-lg text-purple-200 text-[11px]">
                         <p className="font-bold">Gunakan Kode Voucher:</p>
-                        <p className="text-amber-300 font-mono text-sm font-bold">PRO25K-JOO</p>
+                        <p className="text-amber-300 font-mono text-sm font-bold">PRO30K-JOO</p>
                       </div>
                     </div>
                   )}

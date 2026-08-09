@@ -54,44 +54,57 @@ export const WalletModal: React.FC<WalletModalProps> = ({
   const [transactions, setTransactions] = useState<UserTransaction[]>([]);
   const [loadingTx, setLoadingTx] = useState<boolean>(false);
 
-  // Custom QRIS PNG Image State
-  const [qrisImageUrl, setQrisImageUrl] = useState<string>(() => {
-    return localStorage.getItem('custom_qris_png') || 'https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=00020101021126580014ID.DANA.WWW0118936009110001000000005204581253033605802ID5907Joo.exe6013JAKARTA_SELATAN61051211062070703A0163041234';
-  });
-
-  const handleCustomQrisUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    if (file.size > 5 * 1024 * 1024) {
-      alert("Ukuran file PNG melebihi 5MB. Pilih file gambar yang lebih kecil.");
-      return;
-    }
-    const reader = new FileReader();
-    reader.onload = (event) => {
-      const result = event.target?.result as string;
-      if (result) {
-        setQrisImageUrl(result);
-        localStorage.setItem('custom_qris_png', result);
-      }
-    };
-    reader.readAsDataURL(file);
-  };
-  
   // Status Message
   const [loading, setLoading] = useState<boolean>(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
 
-  // Checkout Modal State for Real-Time Gateway Flow
+  // Checkout Modal State for Real-Time Gateway Flow (app.buatqris.site Integration)
   const [checkoutData, setCheckoutData] = useState<{
     amount: number;
     method: 'qris' | 'jago';
     trxId: string;
+    qrisContent?: string;
+    qrImageUrl?: string;
     createdAt: Date;
   } | null>(null);
   const [countdownSeconds, setCountdownSeconds] = useState<number>(900); // 15 Menit
   const [isVerifyingPayment, setIsVerifyingPayment] = useState<boolean>(false);
   const [copiedTrx, setCopiedTrx] = useState<boolean>(false);
+
+  // Auto Polling Status Verification for BuatQRIS API
+  useEffect(() => {
+    if (!checkoutData || checkoutData.method !== 'qris' || !currentUser) return;
+
+    const pollInterval = setInterval(async () => {
+      try {
+        const res = await fetch('/api/qris/check-status', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            invoiceId: checkoutData.trxId,
+            userId: currentUser.uid
+          })
+        });
+
+        if (res.ok) {
+          const data = await res.json();
+          if (data.status === 'SUCCESS') {
+            clearInterval(pollInterval);
+            await topUpBalance(currentUser.uid, checkoutData.amount, 'BuatQRIS API Dynamic QRIS');
+            setSuccessMsg(`Pembayaran Real-Time Berhasil! Saldo +Rp ${checkoutData.amount.toLocaleString('id-ID')} telah otomatis ditambahkan ke dompet Anda.`);
+            setCustomTopUp('');
+            setCheckoutData(null);
+            setTimeout(() => setSuccessMsg(null), 6000);
+          }
+        }
+      } catch (err) {
+        console.warn("QRIS status check polling warning:", err);
+      }
+    }, 4000);
+
+    return () => clearInterval(pollInterval);
+  }, [checkoutData, currentUser]);
 
   // Countdown timer for active checkout
   useEffect(() => {
@@ -101,7 +114,7 @@ export const WalletModal: React.FC<WalletModalProps> = ({
         if (prev <= 1) {
           clearInterval(interval);
           setCheckoutData(null);
-          setErrorMsg('Waktu pembayaran QRIS DANA telah kadaluwarsa (15 menit). Silakan ulangi transaksi.');
+          setErrorMsg('Waktu pembayaran QRIS telah kadaluwarsa (15 menit). Silakan ulangi transaksi.');
           return 0;
         }
         return prev - 1;
@@ -127,27 +140,63 @@ export const WalletModal: React.FC<WalletModalProps> = ({
     setLoadingTx(false);
   };
 
-  const handleStartCheckout = () => {
+  const handleStartCheckout = async () => {
     if (!currentUser) {
       onOpenAuth();
       return;
     }
     const amount = customTopUp ? parseInt(customTopUp, 10) : selectedTopUpAmount;
     if (!amount || amount < 10000) {
-      setErrorMsg('Nominal Top Up minimal Rp 10.000');
+      setErrorMsg('Nominal Deposit minimal Rp 10.000');
       return;
     }
 
-    const randomTrx = `TRX-DANA-${Math.floor(100000 + Math.random() * 900000)}`;
-    setCheckoutData({
-      amount,
-      method: paymentMethod,
-      trxId: randomTrx,
-      createdAt: new Date()
-    });
-    setCountdownSeconds(900);
+    setIsVerifyingPayment(true);
     setErrorMsg(null);
     setSuccessMsg(null);
+
+    try {
+      if (paymentMethod === 'qris') {
+        const res = await fetch('/api/qris/create', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            userId: currentUser.uid,
+            userEmail: currentUser.email,
+            amount: amount,
+            note: `Deposit Saldo Web2App Studio Rp ${amount.toLocaleString('id-ID')}`
+          })
+        });
+
+        const data = await res.json();
+        if (!res.ok || !data.success) {
+          throw new Error(data.error || 'Gagal membuat Dynamic QRIS invoice via BuatQRIS API.');
+        }
+
+        setCheckoutData({
+          amount: data.amount,
+          method: 'qris',
+          trxId: data.invoiceId,
+          qrisContent: data.qrisContent,
+          qrImageUrl: data.qrImageUrl,
+          createdAt: new Date()
+        });
+        setCountdownSeconds(900);
+      } else {
+        const randomTrx = `JAGO-${Math.floor(100000 + Math.random() * 900000)}`;
+        setCheckoutData({
+          amount,
+          method: 'jago',
+          trxId: randomTrx,
+          createdAt: new Date()
+        });
+        setCountdownSeconds(900);
+      }
+    } catch (err: any) {
+      setErrorMsg(err.message || 'Terjadi kesalahan saat memproses checkout.');
+    } finally {
+      setIsVerifyingPayment(false);
+    }
   };
 
   const handleConfirmPaymentRealtime = async () => {
@@ -157,21 +206,30 @@ export const WalletModal: React.FC<WalletModalProps> = ({
     setErrorMsg(null);
 
     try {
-      const methodLabel = checkoutData.method === 'qris' 
-        ? 'DANA QRIS Merchant' 
-        : checkoutData.method === 'jago' 
-          ? 'Bank Jago' 
-          : checkoutData.method.toUpperCase();
+      const res = await fetch('/api/qris/check-status', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          invoiceId: checkoutData.trxId,
+          userId: currentUser.uid
+        })
+      });
 
-      // Simulate 1.5s real-time Webhook verification delay
-      await new Promise((resolve) => setTimeout(resolve, 1500));
+      const data = await res.json();
+      if (!res.ok || !data.success) {
+        throw new Error(data.error || 'Gagal memverifikasi status pembayaran.');
+      }
 
-      await topUpBalance(currentUser.uid, checkoutData.amount, methodLabel);
-      
-      setSuccessMsg(`Pembayaran Real-Time Berhasil! Saldo +Rp ${checkoutData.amount.toLocaleString('id-ID')} telah ditambahkan ke dompet Anda.`);
-      setCustomTopUp('');
-      setCheckoutData(null);
-      setTimeout(() => setSuccessMsg(null), 5000);
+      if (data.status === 'SUCCESS') {
+        await topUpBalance(currentUser.uid, checkoutData.amount, checkoutData.method === 'qris' ? 'BuatQRIS Dynamic QRIS' : 'Bank Jago Direct');
+
+        setSuccessMsg(`Pembayaran Berhasil Terverifikasi! Saldo Deposit +Rp ${checkoutData.amount.toLocaleString('id-ID')} telah otomatis masuk ke akun Anda.`);
+        setCustomTopUp('');
+        setCheckoutData(null);
+        setTimeout(() => setSuccessMsg(null), 6000);
+      } else {
+        setErrorMsg('Pembayaran belum terdeteksi oleh sistem payment gateway. Silakan selesaikan pembayaran terlebih dahulu.');
+      }
     } catch (err: any) {
       setErrorMsg(err.message || 'Gagal memverifikasi pembayaran real-time.');
     } finally {
@@ -248,7 +306,7 @@ export const WalletModal: React.FC<WalletModalProps> = ({
                   TERHUBUNG
                 </span>
               </h3>
-              <p className="text-xs text-slate-400">Top Up Saldo, Paket Token Build, & Langganan Bulanan</p>
+              <p className="text-xs text-slate-400">Deposit Saldo, Paket Token Build, & Langganan Bulanan</p>
             </div>
           </div>
           <button
@@ -346,7 +404,7 @@ export const WalletModal: React.FC<WalletModalProps> = ({
             }`}
           >
             <PlusCircle className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-emerald-400" />
-            <span>Top Up</span>
+            <span>Deposit</span>
           </button>
 
           <button
@@ -395,7 +453,7 @@ export const WalletModal: React.FC<WalletModalProps> = ({
 
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4 pt-2">
                 
-                {/* PLAN 1: STARTER (Rp 10.000 / Bulan) */}
+                {/* PLAN 1: STARTER (Rp 15.000 / Bulan) */}
                 <div className={`p-5 rounded-2xl bg-slate-950 border transition-all flex flex-col justify-between relative ${
                   currentPlan === 'Starter' ? 'border-sky-500 ring-2 ring-sky-500/20' : 'border-slate-800 hover:border-slate-700'
                 }`}>
@@ -406,7 +464,7 @@ export const WalletModal: React.FC<WalletModalProps> = ({
                     </div>
 
                     <div className="my-3">
-                      <span className="text-2xl font-black text-white">Rp 10.000</span>
+                      <span className="text-2xl font-black text-white">Rp 15.000</span>
                       <span className="text-xs text-slate-400"> / bulan</span>
                     </div>
 
@@ -421,7 +479,7 @@ export const WalletModal: React.FC<WalletModalProps> = ({
                       </li>
                       <li className="flex items-center gap-2">
                         <Check className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
-                        <span>Hanya Basic HTML/WebView Engine</span>
+                        <span>PWA Standalone & Basic WebView Engine</span>
                       </li>
                       <li className="flex items-center gap-2 text-slate-500">
                         <X className="w-3.5 h-3.5 shrink-0 text-rose-400" />
@@ -443,7 +501,7 @@ export const WalletModal: React.FC<WalletModalProps> = ({
                   </div>
 
                   <button
-                    onClick={() => handleBuySubscription('Starter', 10000, 20)}
+                    onClick={() => handleBuySubscription('Starter', 15000, 20)}
                     disabled={loading || currentPlan === 'Starter'}
                     className={`w-full py-2.5 rounded-xl font-bold text-xs transition-all shadow ${
                       currentPlan === 'Starter'
@@ -451,11 +509,11 @@ export const WalletModal: React.FC<WalletModalProps> = ({
                         : 'bg-sky-500 hover:bg-sky-400 text-white active:scale-95'
                     }`}
                   >
-                    {currentPlan === 'Starter' ? 'Paket Aktif Saat Ini' : 'Berlangganan Rp 10.000'}
+                    {currentPlan === 'Starter' ? 'Paket Aktif Saat Ini' : 'Berlangganan Rp 15.000'}
                   </button>
                 </div>
 
-                {/* PLAN 2: PRO BUILDER (Rp 25.000 / Bulan - MOST POPULAR & FULL ENGINE ACCESS) */}
+                {/* PLAN 2: PRO BUILDER (Rp 30.000 / Bulan - MOST POPULAR & FULL ENGINE ACCESS) */}
                 <div className={`p-5 rounded-2xl bg-slate-950 border transition-all flex flex-col justify-between relative ${
                   currentPlan === 'Pro' ? 'border-amber-500 ring-2 ring-amber-500/20' : 'border-amber-500/50 hover:border-amber-400'
                 }`}>
@@ -470,7 +528,7 @@ export const WalletModal: React.FC<WalletModalProps> = ({
                     </div>
 
                     <div className="my-3">
-                      <span className="text-2xl font-black text-white">Rp 25.000</span>
+                      <span className="text-2xl font-black text-white">Rp 30.000</span>
                       <span className="text-xs text-slate-400"> / bulan</span>
                     </div>
 
@@ -485,7 +543,7 @@ export const WalletModal: React.FC<WalletModalProps> = ({
                       </li>
                       <li className="flex items-center gap-2">
                         <Check className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
-                        <span><strong>Akses Flutter & React Native Engines</strong></span>
+                        <span><strong>Akses Flutter, Kotlin, Swift & React Native</strong></span>
                       </li>
                       <li className="flex items-center gap-2">
                         <Check className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
@@ -501,13 +559,13 @@ export const WalletModal: React.FC<WalletModalProps> = ({
                       </li>
                       <li className="flex items-center gap-2 text-slate-500">
                         <X className="w-3.5 h-3.5 shrink-0 text-rose-400" />
-                        <span>KMP, HarmonyOS, & Custom Native Plugins (Perlu Enterprise 50k)</span>
+                        <span>KMP, HarmonyOS, & Custom Native Plugins (Perlu Enterprise 60k)</span>
                       </li>
                     </ul>
                   </div>
 
                   <button
-                    onClick={() => handleBuySubscription('Pro', 25000, 60)}
+                    onClick={() => handleBuySubscription('Pro', 30000, 60)}
                     disabled={loading || currentPlan === 'Pro'}
                     className={`w-full py-2.5 rounded-xl font-bold text-xs transition-all shadow ${
                       currentPlan === 'Pro'
@@ -515,11 +573,11 @@ export const WalletModal: React.FC<WalletModalProps> = ({
                         : 'bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-400 hover:to-orange-400 text-slate-950 active:scale-95'
                     }`}
                   >
-                    {currentPlan === 'Pro' ? 'Paket Aktif Saat Ini' : 'Berlangganan Rp 25.000'}
+                    {currentPlan === 'Pro' ? 'Paket Aktif Saat Ini' : 'Berlangganan Rp 30.000'}
                   </button>
                 </div>
 
-                {/* PLAN 3: ENTERPRISE (Rp 50.000 / Bulan - UNLIMITED VIP) */}
+                {/* PLAN 3: ENTERPRISE (Rp 60.000 / Bulan - UNLIMITED VIP) */}
                 <div className={`p-5 rounded-2xl bg-slate-950 border transition-all flex flex-col justify-between relative ${
                   currentPlan === 'Enterprise' ? 'border-purple-500 ring-2 ring-purple-500/20' : 'border-slate-800 hover:border-slate-700'
                 }`}>
@@ -530,12 +588,12 @@ export const WalletModal: React.FC<WalletModalProps> = ({
                     </div>
 
                     <div className="my-3">
-                      <span className="text-2xl font-black text-white">Rp 50.000</span>
+                      <span className="text-2xl font-black text-white">Rp 60.000</span>
                       <span className="text-xs text-slate-400"> / bulan</span>
                     </div>
 
                     <div className="text-[11px] font-semibold text-purple-400/90 mb-2 border-b border-slate-800 pb-1">
-                      Akses Lengkap Tanpa Batasan (50k Full Unlocked):
+                      Akses Lengkap Tanpa Batasan (60k Full Unlocked):
                     </div>
 
                     <ul className="space-y-2 text-xs text-slate-300 mb-6">
@@ -567,7 +625,7 @@ export const WalletModal: React.FC<WalletModalProps> = ({
                   </div>
 
                   <button
-                    onClick={() => handleBuySubscription('Enterprise', 50000, 150)}
+                    onClick={() => handleBuySubscription('Enterprise', 60000, 150)}
                     disabled={loading || currentPlan === 'Enterprise'}
                     className={`w-full py-2.5 rounded-xl font-bold text-xs transition-all shadow ${
                       currentPlan === 'Enterprise'
@@ -575,7 +633,7 @@ export const WalletModal: React.FC<WalletModalProps> = ({
                         : 'bg-purple-600 hover:bg-purple-500 text-white active:scale-95'
                     }`}
                   >
-                    {currentPlan === 'Enterprise' ? 'Paket Aktif Saat Ini' : 'Berlangganan Rp 50.000'}
+                    {currentPlan === 'Enterprise' ? 'Paket Aktif Saat Ini' : 'Berlangganan Rp 60.000'}
                   </button>
                 </div>
 
@@ -583,7 +641,7 @@ export const WalletModal: React.FC<WalletModalProps> = ({
 
               <div className="p-3 bg-slate-950 border border-slate-800 rounded-xl text-xs text-slate-400 flex items-center gap-2">
                 <ShieldCheck className="w-4 h-4 text-emerald-400 shrink-0" />
-                <span>Pembayaran otomatis dipotong dari Saldo Utama. Jika saldo kurang, silakan lakukan Top Up terlebih dahulu.</span>
+                <span>Pembayaran otomatis dipotong dari Saldo Utama. Jika saldo kurang, silakan lakukan Deposit terlebih dahulu.</span>
               </div>
             </div>
           )}
@@ -687,12 +745,12 @@ export const WalletModal: React.FC<WalletModalProps> = ({
                               ? 'bg-emerald-500/20 text-emerald-400 border-emerald-500/30'
                               : 'bg-amber-500/20 text-amber-400 border-amber-500/30'
                           }`}>
-                            {checkoutData.method === 'qris' ? 'QRIS DANA (Joo.exe)' : 'BANK JAGO'}
+                            {checkoutData.method === 'qris' ? 'QRIS INSTANT' : 'BANK JAGO'}
                           </span>
                         </h4>
                         <p className="text-xs text-slate-400 mt-0.5">
                           {checkoutData.method === 'qris' 
-                            ? 'Scan QRIS menggunakan DANA, GoPay, OVO, ShopeePay, atau M-Banking' 
+                            ? 'Scan QRIS menggunakan DANA, GoPay, OVO, ShopeePay, atau M-Banking apapun' 
                             : 'Transfer ke rekening Bank Jago tanpa biaya admin'}
                         </p>
                       </div>
@@ -709,7 +767,7 @@ export const WalletModal: React.FC<WalletModalProps> = ({
                   {/* Payment Details Card */}
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4 items-center bg-slate-900 p-4 rounded-xl border border-slate-800">
                     {checkoutData.method === 'qris' ? (
-                      /* OFFICIAL QRIS DANA MERCHANT CARD (Joo.exe) */
+                      /* DYNAMIC QRIS INSTANT CARD */
                       <div className="flex flex-col items-center justify-center p-4 bg-white rounded-2xl shadow-2xl relative overflow-hidden group border border-slate-200">
                         {/* Top Header Banner */}
                         <div className="w-full pb-2 border-b border-slate-200 mb-2 flex items-center justify-between px-1">
@@ -722,23 +780,23 @@ export const WalletModal: React.FC<WalletModalProps> = ({
 
                         {/* Merchant Details Header */}
                         <div className="text-center my-1">
-                          <h3 className="text-base font-black text-slate-900 tracking-wide">Joo.exe</h3>
-                          <div className="text-[10px] font-bold text-slate-400 font-mono">A01</div>
+                          <h3 className="text-base font-black text-slate-900 tracking-wide">QRIS INSTANT</h3>
+                          <div className="text-[10px] font-bold text-emerald-600 font-mono uppercase tracking-wider">Metode Otomatis / Fast Dynamic</div>
                         </div>
 
-                        {/* QR Code Matrix / PNG Image Display */}
-                        <div className="relative p-2 bg-white rounded-xl border-2 border-slate-900/10 flex flex-col items-center justify-center my-1">
+                        {/* QR Code Matrix Display */}
+                        <div className="relative p-2 bg-white rounded-xl border-2 border-slate-900/10 flex flex-col items-center justify-center my-1 shadow-inner">
                           <img
-                            src={qrisImageUrl}
-                            alt="QRIS Joo.exe"
-                            className="w-48 h-48 object-contain rounded-lg p-1 bg-white"
+                            src={checkoutData.qrImageUrl || (checkoutData.qrisContent ? `https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=${encodeURIComponent(checkoutData.qrisContent)}` : '')}
+                            alt="Dynamic BuatQRIS QR Code"
+                            className="w-52 h-52 object-contain rounded-lg p-1 bg-white"
                           />
                         </div>
 
                         {/* Footer Info */}
                         <div className="text-center mt-2 w-full pt-2 border-t border-slate-100">
                           <div className="text-[10px] font-black text-slate-800 tracking-wider">SATU QRIS UNTUK SEMUA</div>
-                          <div className="text-[9px] text-slate-500 font-mono">www.aspi-qris.id • Dicetak oleh: 936009115</div>
+                          <div className="text-[9px] text-slate-500 font-mono">DANA • GoPay • OVO • ShopeePay • M-Banking</div>
                         </div>
                       </div>
                     ) : (
@@ -815,7 +873,7 @@ export const WalletModal: React.FC<WalletModalProps> = ({
                         <div className="flex justify-between items-center text-slate-400">
                           <span>Metode Pembayaran:</span>
                           <span className="font-bold text-white uppercase">
-                            {checkoutData.method === 'qris' ? 'QRIS DANA (Joo.exe)' : 'Bank Jago'}
+                            {checkoutData.method === 'qris' ? 'QRIS Instant' : 'Bank Jago'}
                           </span>
                         </div>
 
@@ -847,12 +905,27 @@ export const WalletModal: React.FC<WalletModalProps> = ({
                               <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
                               <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-emerald-500"></span>
                             </span>
-                            <span>Menunggu Pembayaran...</span>
+                            <span>Menunggu Pembayaran (Auto-Polling Aktif)...</span>
                           </div>
-                          <p className="text-[10px] text-slate-400">
-                            Setorkan pembayaran via QRIS atau Transfer Bank Jago. Saldo akan otomatis bertambah ke akun Anda.
-                          </p>
                         </div>
+
+                        <button
+                          onClick={handleConfirmPaymentRealtime}
+                          disabled={isVerifyingPayment}
+                          className="w-full py-2.5 bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold rounded-xl text-xs transition-transform active:scale-95 shadow flex items-center justify-center gap-2"
+                        >
+                          {isVerifyingPayment ? (
+                            <>
+                              <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+                              <span>Memverifikasi Pembayaran via BuatQRIS...</span>
+                            </>
+                          ) : (
+                            <>
+                              <CheckCircle2 className="w-3.5 h-3.5" />
+                              <span>Cek Status Verifikasi Pembayaran Sekarang</span>
+                            </>
+                          )}
+                        </button>
 
                         <button
                           onClick={() => setCheckoutData(null)}
@@ -865,12 +938,12 @@ export const WalletModal: React.FC<WalletModalProps> = ({
                   </div>
                 </div>
               ) : (
-                /* REGULAR TOPUP SELECTOR FORM */
+                /* REGULAR DEPOSIT SELECTOR FORM */
                 <>
                   <div className="text-center max-w-md mx-auto space-y-1">
                     <h4 className="text-base font-bold text-white flex items-center justify-center gap-2">
                       <PlusCircle className="w-4 h-4 text-emerald-400" />
-                      <span>Isi Saldo / Top Up Balance</span>
+                      <span>Isi Saldo / Deposit Balance</span>
                     </h4>
                     <p className="text-xs text-slate-400">
                       Pilih nominal saldo yang ingin ditambahkan ke dompet akun Anda.
@@ -879,7 +952,7 @@ export const WalletModal: React.FC<WalletModalProps> = ({
 
                   {/* Nominal Quick Picks */}
                   <div className="space-y-2">
-                    <label className="block text-xs font-bold text-slate-300">Pilih Nominal Top Up (IDR):</label>
+                    <label className="block text-xs font-bold text-slate-300">Pilih Nominal Deposit (IDR):</label>
                     <div className="grid grid-cols-3 sm:grid-cols-5 gap-2">
                       {[10000, 25000, 50000, 100000, 250000].map((amt) => (
                         <button
@@ -929,7 +1002,7 @@ export const WalletModal: React.FC<WalletModalProps> = ({
                         </div>
                         <div className="text-left">
                           <div className="text-xs font-black text-white flex items-center gap-1.5">
-                            <span>QRIS DANA (Joo.exe)</span>
+                            <span>QRIS Instant</span>
                             <span className="text-[9px] bg-emerald-500/20 text-emerald-400 px-1.5 py-0.2 rounded font-mono">Instant</span>
                           </div>
                         </div>
@@ -962,7 +1035,7 @@ export const WalletModal: React.FC<WalletModalProps> = ({
                         <div className="flex items-start gap-2">
                           <QrCode className="w-4 h-4 text-emerald-400 shrink-0 mt-0.5" />
                           <span>
-                            <strong className="text-emerald-300">QRIS DANA Merchant (Joo.exe):</strong> Transfer cepat & instan dari aplikasi DANA, GoPay, OVO, ShopeePay, Maupun M-Banking apapun.
+                            <strong className="text-emerald-300">QRIS Instant:</strong> Transfer cepat & instan dari aplikasi DANA, GoPay, OVO, ShopeePay, Maupun M-Banking apapun.
                           </span>
                         </div>
                       )}
@@ -1013,7 +1086,7 @@ export const WalletModal: React.FC<WalletModalProps> = ({
                 <div className="py-8 text-center text-xs text-slate-400">Memuat riwayat transaksi...</div>
               ) : transactions.length === 0 ? (
                 <div className="py-8 text-center text-xs text-slate-500 bg-slate-950 border border-slate-800 rounded-2xl">
-                  Belum ada riwayat transaksi. Lakukan Top Up atau Beli Token/Langganan.
+                  Belum ada riwayat transaksi. Lakukan Deposit atau Beli Token/Langganan.
                 </div>
               ) : (
                 <div className="space-y-2">

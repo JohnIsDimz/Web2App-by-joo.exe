@@ -35,7 +35,7 @@ export const WelcomeModal: React.FC<WelcomeModalProps> = ({
   isNewUser,
   userName,
   userEmail,
-  tokens = 10,
+  tokens = 0,
   subscriptionPlan = 'Free',
   activeAppName = 'Web2App Project',
   engineType = 'flutter',
@@ -197,8 +197,8 @@ export const WelcomeModal: React.FC<WelcomeModalProps> = ({
                 <div className="grid grid-cols-2 gap-2 text-xs">
                   <div className="p-2.5 bg-slate-950/80 border border-slate-800 rounded-lg">
                     <div className="text-[10px] text-slate-400 mb-0.5">Sisa Token Build</div>
-                    <div className="font-bold text-emerald-400 text-sm flex items-center gap-1">
-                      <Zap className="w-3.5 h-3.5 fill-emerald-400" />
+                    <div className={`font-bold text-sm flex items-center gap-1 ${tokens > 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
+                      <Zap className={`w-3.5 h-3.5 ${tokens > 0 ? 'fill-emerald-400' : 'fill-rose-400'}`} />
                       <span>{tokens} Token</span>
                     </div>
                   </div>
@@ -208,6 +208,12 @@ export const WelcomeModal: React.FC<WelcomeModalProps> = ({
                     <div className="font-bold text-sky-400 text-sm">{subscriptionPlan}</div>
                   </div>
                 </div>
+
+                {tokens === 0 && !isVIPAdmin && (
+                  <div className="p-2.5 bg-amber-500/10 border border-amber-500/30 rounded-lg text-[11px] text-amber-200 flex items-center justify-between gap-2">
+                    <span>Token build Anda 0. Lakukan Deposit, Beli Token, atau Berlangganan di Dompet.</span>
+                  </div>
+                )}
               </div>
 
               {/* Quick Resume Info */}

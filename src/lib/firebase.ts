@@ -164,7 +164,7 @@ export async function saveUserProfile(user: User): Promise<UserProfileData & { i
         updatedData.tokens = 999999;
       } else {
         if (existing.tokens === undefined || existing.tokens === null || typeof existing.tokens !== 'number') {
-          updatedData.tokens = 10;
+          updatedData.tokens = 0;
         }
         if (existing.balance === undefined || existing.balance === null || typeof existing.balance !== 'number') {
           updatedData.balance = 0;
@@ -178,7 +178,7 @@ export async function saveUserProfile(user: User): Promise<UserProfileData & { i
       return {
         ...existing,
         ...updatedData,
-        tokens: updatedData.tokens ?? existing.tokens ?? 10,
+        tokens: updatedData.tokens ?? existing.tokens ?? 0,
         balance: updatedData.balance ?? existing.balance ?? 0,
         subscriptionPlan: updatedData.subscriptionPlan ?? existing.subscriptionPlan ?? 'Free',
         isNewUser: false
@@ -225,7 +225,7 @@ export async function saveUserProfile(user: User): Promise<UserProfileData & { i
       photoURL: user.photoURL || null,
       providerId: user.providerData[0]?.providerId || 'password',
       balance: 0,
-      tokens: 10,
+      tokens: 0,
       subscriptionPlan: 'Free',
       subscriptionExpiry: null,
       lastLogin: new Date().toISOString(),
@@ -241,6 +241,20 @@ export async function saveUserProfile(user: User): Promise<UserProfileData & { i
 export function subscribeUserProfile(uid: string, callback: (profile: UserProfileData | null) => void) {
   const sendFallback = () => {
     if (auth.currentUser) {
+      // Check cached profile first to guarantee balance/tokens persistence
+      try {
+        const cached = localStorage.getItem(`web2app_user_profile_${uid}`);
+        if (cached) {
+          const parsed = JSON.parse(cached);
+          if (parsed && typeof parsed.balance === 'number') {
+            callback(parsed);
+            return;
+          }
+        }
+      } catch (e) {
+        // Ignore JSON error
+      }
+
       const email = auth.currentUser.email;
       const admin = isAdminUser(email);
       callback({
@@ -250,7 +264,7 @@ export function subscribeUserProfile(uid: string, callback: (profile: UserProfil
         photoURL: auth.currentUser.photoURL || null,
         providerId: 'password',
         balance: admin ? 999999999 : 0,
-        tokens: admin ? 999999 : 10,
+        tokens: admin ? 999999 : 0,
         subscriptionPlan: admin ? 'Enterprise' : 'Free',
         subscriptionExpiry: admin ? '2099-12-31T23:59:59.000Z' : null,
         lastLogin: new Date().toISOString(),
@@ -274,7 +288,7 @@ export function subscribeUserProfile(uid: string, callback: (profile: UserProfil
         data.tokens = Math.max(data.tokens || 0, 999999);
       } else {
         if (data.tokens === undefined || data.tokens === null || typeof data.tokens !== 'number') {
-          data.tokens = 10;
+          data.tokens = 0;
         }
         if (data.balance === undefined || data.balance === null || typeof data.balance !== 'number') {
           data.balance = 0;
@@ -283,6 +297,14 @@ export function subscribeUserProfile(uid: string, callback: (profile: UserProfil
           data.subscriptionPlan = 'Free';
         }
       }
+
+      // Persist to local storage to protect against offline loss
+      try {
+        localStorage.setItem(`web2app_user_profile_${uid}`, JSON.stringify(data));
+      } catch (e) {
+        // Storage full or unavailable
+      }
+
       callback(data);
     } else {
       sendFallback();
@@ -301,11 +323,26 @@ async function getUserProfileSafe(uid: string): Promise<UserProfileData> {
   try {
     const snap = await getDoc(userRef);
     if (snap.exists()) {
-      return snap.data() as UserProfileData;
+      const data = snap.data() as UserProfileData;
+      try {
+        localStorage.setItem(`web2app_user_profile_${uid}`, JSON.stringify(data));
+      } catch (e) {}
+      return data;
     }
   } catch (err) {
-    console.warn("Firestore getDoc warning (falling back to cached auth profile):", err);
+    console.warn("Firestore getDoc warning (falling back to cached profile):", err);
   }
+
+  // Try local storage cache before default fallback
+  try {
+    const cached = localStorage.getItem(`web2app_user_profile_${uid}`);
+    if (cached) {
+      const parsed = JSON.parse(cached);
+      if (parsed && typeof parsed.balance === 'number') {
+        return parsed;
+      }
+    }
+  } catch (e) {}
 
   // Fallback profile if offline or doc doesn't exist yet
   const currentUser = auth.currentUser;
@@ -317,7 +354,7 @@ async function getUserProfileSafe(uid: string): Promise<UserProfileData> {
     photoURL: currentUser?.photoURL || null,
     providerId: 'password',
     balance: isDevAdmin ? 999999999 : 0,
-    tokens: isDevAdmin ? 999999 : 10,
+    tokens: isDevAdmin ? 999999 : 0,
     subscriptionPlan: isDevAdmin ? 'Enterprise' : 'Free',
     subscriptionExpiry: isDevAdmin ? '2099-12-31T23:59:59.000Z' : null,
     lastLogin: new Date().toISOString(),
@@ -327,12 +364,23 @@ async function getUserProfileSafe(uid: string): Promise<UserProfileData> {
 }
 
 /**
- * Top Up User Balance (Instant Real-time Payment)
+ * Top Up / Deposit User Balance (Instant Real-time Payment)
  */
 export async function topUpBalance(uid: string, amount: number, paymentMethod: string): Promise<number> {
   const userRef = doc(db, 'users', uid);
   const current = await getUserProfileSafe(uid);
   const newBalance = (current.balance || 0) + amount;
+
+  const updatedProfile: UserProfileData = {
+    ...current,
+    balance: newBalance,
+    lastLogin: new Date().toISOString()
+  };
+
+  // Cache immediately locally
+  try {
+    localStorage.setItem(`web2app_user_profile_${uid}`, JSON.stringify(updatedProfile));
+  } catch (e) {}
 
   try {
     await setDoc(userRef, {
@@ -348,7 +396,7 @@ export async function topUpBalance(uid: string, amount: number, paymentMethod: s
       userId: uid,
       type: 'topup',
       amount: amount,
-      description: `Top Up Saldo via ${paymentMethod} (+Rp ${amount.toLocaleString('id-ID')})`,
+      description: `Deposit Saldo via ${paymentMethod} (+Rp ${amount.toLocaleString('id-ID')})`,
       timestamp: new Date().toISOString()
     });
   } catch (err) {
@@ -366,7 +414,7 @@ export async function buyTokenPackage(uid: string, tokenCount: number, priceIdr:
   const current = await getUserProfileSafe(uid);
 
   if ((current.balance || 0) < priceIdr) {
-    throw new Error(`Saldo tidak mencukupi (Saldo: Rp ${(current.balance || 0).toLocaleString('id-ID')}, Dibutuhkan: Rp ${priceIdr.toLocaleString('id-ID')}). Silakan Top Up Saldo lebih dulu.`);
+    throw new Error(`Saldo tidak mencukupi (Saldo: Rp ${(current.balance || 0).toLocaleString('id-ID')}, Dibutuhkan: Rp ${priceIdr.toLocaleString('id-ID')}). Silakan Deposit Saldo lebih dulu.`);
   }
 
   const newBalance = (current.balance || 0) - priceIdr;
@@ -414,7 +462,7 @@ export async function buyMonthlySubscription(
   const current = await getUserProfileSafe(uid);
 
   if ((current.balance || 0) < priceIdr) {
-    throw new Error(`Saldo tidak cukup (Saldo: Rp ${(current.balance || 0).toLocaleString('id-ID')}, Harga Langganan: Rp ${priceIdr.toLocaleString('id-ID')}). Silakan Top Up Saldo.`);
+    throw new Error(`Saldo tidak cukup (Saldo: Rp ${(current.balance || 0).toLocaleString('id-ID')}, Harga Langganan: Rp ${priceIdr.toLocaleString('id-ID')}). Silakan Deposit Saldo.`);
   }
 
   const newBalance = (current.balance || 0) - priceIdr;
