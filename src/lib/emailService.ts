@@ -1,5 +1,5 @@
 // Background Transactional Email Utility
-// Dispatches emails seamlessly in the background via /api/send-email API backend
+// Dispatches emails seamlessly in the background via /api/send-email API backend asynchronously without UI interaction
 
 export interface BackgroundEmailParams {
   to: string;
@@ -9,7 +9,11 @@ export interface BackgroundEmailParams {
   customMessage?: string;
 }
 
-export async function sendBackgroundEmail(params: BackgroundEmailParams): Promise<void> {
+/**
+ * Asynchronous background email event trigger function.
+ * Communicates directly with the backend cloud API (/api/send-email) silently in the background without UI interaction.
+ */
+export async function triggerEmailEvent(params: BackgroundEmailParams): Promise<void> {
   if (!params.to || !params.to.includes('@')) {
     return;
   }
@@ -32,8 +36,12 @@ export async function sendBackgroundEmail(params: BackgroundEmailParams): Promis
     });
 
     const data = await response.json();
-    console.log(`[Background Email] Dispatched template "${params.templateType}" to ${params.to}:`, data);
+    console.log(`[triggerEmailEvent] Dispatched email "${params.templateType}" to ${params.to}:`, data);
   } catch (err) {
-    console.warn('[Background Email] Background email send error:', err);
+    console.warn('[triggerEmailEvent] Silent background email error:', err);
   }
 }
+
+// Alias for backward compatibility
+export const sendBackgroundEmail = triggerEmailEvent;
+

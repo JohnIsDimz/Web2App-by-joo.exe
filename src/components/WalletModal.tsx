@@ -417,35 +417,27 @@ export const WalletModal: React.FC<WalletModalProps> = ({
                     <ul className="space-y-2 text-xs text-slate-300 mb-6">
                       <li className="flex items-center gap-2">
                         <Check className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
-                        <span><strong>20 Token Build Gratis</strong> / bulan</span>
+                        <span><strong>10 Token Build</strong> / bulan</span>
                       </li>
                       <li className="flex items-center gap-2">
                         <Check className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
-                        <span>Standard Mobile Engines (Flutter, Swift, Kotlin, Capacitor, React Native, PWA)</span>
-                      </li>
-                      <li className="flex items-center gap-2">
-                        <Check className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
-                        <span><strong>Bebas Watermark Logo</strong></span>
-                      </li>
-                      <li className="flex items-center gap-2">
-                        <Check className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
-                        <span>Custom Icon, Splash Screen, & Colors</span>
-                      </li>
-                      <li className="flex items-center gap-2">
-                        <Check className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
-                        <span>Real-Time Simulator & Cloud Database Sync</span>
+                        <span>Hanya Basic HTML/WebView Engine</span>
                       </li>
                       <li className="flex items-center gap-2 text-slate-500">
                         <X className="w-3.5 h-3.5 shrink-0 text-rose-400" />
-                        <span>Engine KMP, Turbo, HarmonyOS & Electron</span>
+                        <span>Fitur Rekomendasi (Flutter, KMP, HarmonyOS) Terkunci</span>
                       </li>
                       <li className="flex items-center gap-2 text-slate-500">
                         <X className="w-3.5 h-3.5 shrink-0 text-rose-400" />
-                        <span>Custom CSS & JavaScript Injections</span>
+                        <span>Custom CSS & JavaScript Injections Terkunci</span>
                       </li>
                       <li className="flex items-center gap-2 text-slate-500">
                         <X className="w-3.5 h-3.5 shrink-0 text-rose-400" />
-                        <span>Download Source Code (.zip)</span>
+                        <span>Push Notification & Native Permissions Terkunci</span>
+                      </li>
+                      <li className="flex items-center gap-2 text-slate-500">
+                        <X className="w-3.5 h-3.5 shrink-0 text-rose-400" />
+                        <span>Download Source Code (.zip) Terkunci</span>
                       </li>
                     </ul>
                   </div>
@@ -483,33 +475,33 @@ export const WalletModal: React.FC<WalletModalProps> = ({
                     </div>
 
                     <div className="text-[11px] font-semibold text-amber-400/90 mb-2 border-b border-slate-800 pb-1">
-                      Akses Seluruh Fitur Utama:
+                      Akses Seimbang (Balanced Tier):
                     </div>
 
                     <ul className="space-y-2 text-xs text-slate-300 mb-6">
                       <li className="flex items-center gap-2">
                         <Check className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
-                        <span><strong>60 Token Build Gratis</strong> / bulan</span>
+                        <span><strong>50 Token Build</strong> / bulan</span>
                       </li>
                       <li className="flex items-center gap-2">
                         <Check className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
-                        <span><strong>Buka 11 Multi-Engine Lengkap</strong> (KMP, Turbo Native, HarmonyOS, Electron Desktop)</span>
+                        <span><strong>Akses Flutter & React Native Engines</strong></span>
                       </li>
                       <li className="flex items-center gap-2">
                         <Check className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
-                        <span><strong>Custom CSS & JS Injections Unlocked</strong></span>
+                        <span>Custom CSS & JavaScript Injections</span>
                       </li>
                       <li className="flex items-center gap-2">
                         <Check className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
-                        <span><strong>Download Full Source Code (.zip)</strong></span>
+                        <span><strong>Download Source Code (.zip)</strong></span>
                       </li>
                       <li className="flex items-center gap-2">
                         <Check className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
-                        <span>Fast-Track Server APK Compiler (3x Cepat)</span>
+                        <span>Push Notifications (Basic OneSignal)</span>
                       </li>
-                      <li className="flex items-center gap-2">
-                        <Check className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
-                        <span>Bebas Watermark & Custom Branding</span>
+                      <li className="flex items-center gap-2 text-slate-500">
+                        <X className="w-3.5 h-3.5 shrink-0 text-rose-400" />
+                        <span>KMP, HarmonyOS, & Custom Native Plugins (Perlu Enterprise 50k)</span>
                       </li>
                     </ul>
                   </div>
@@ -543,33 +535,33 @@ export const WalletModal: React.FC<WalletModalProps> = ({
                     </div>
 
                     <div className="text-[11px] font-semibold text-purple-400/90 mb-2 border-b border-slate-800 pb-1">
-                      Fasilitas VIP & Business:
+                      Akses Lengkap Tanpa Batasan (50k Full Unlocked):
                     </div>
 
                     <ul className="space-y-2 text-xs text-slate-300 mb-6">
                       <li className="flex items-center gap-2">
                         <Check className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
-                        <span><strong>150 Token Gratis</strong> / bulan + Diskon Token 50%</span>
+                        <span><strong>150 Token Build</strong> / bulan + VIP Priority Queue</span>
                       </li>
                       <li className="flex items-center gap-2">
                         <Check className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
-                        <span><strong>Akses VIP Tanpa Batasan</strong> untuk Seluruh Fitur</span>
+                        <span><strong>Akses SEMUA Multi-Engine</strong> (KMP, Flutter, HarmonyOS, React Native, Electron)</span>
                       </li>
                       <li className="flex items-center gap-2">
                         <Check className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
-                        <span>Unlimited Build APK/AAB Production Release</span>
+                        <span>Custom C++/Rust Native Plugins & Code Ingestion</span>
                       </li>
                       <li className="flex items-center gap-2">
                         <Check className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
-                        <span>Unlimited Download Source Code ZIP</span>
+                        <span>Unlimited Release APK/AAB Builds & ZIP Export</span>
                       </li>
                       <li className="flex items-center gap-2">
                         <Check className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
-                        <span>Custom Branding, Domain, & API Webhooks</span>
+                        <span>Pterodactyl VPS Dedicated Compiler Node</span>
                       </li>
                       <li className="flex items-center gap-2">
                         <Check className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
-                        <span>VIP Direct Developer Support 24/7</span>
+                        <span>White-label Custom App Branding & Package ID</span>
                       </li>
                     </ul>
                   </div>

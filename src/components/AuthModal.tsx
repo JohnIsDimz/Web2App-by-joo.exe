@@ -19,7 +19,7 @@ import {
 } from 'lucide-react';
 import { User, signInWithEmailAndPassword, createUserWithEmailAndPassword, sendPasswordResetEmail } from 'firebase/auth';
 import { auth, signInWithGoogle, signOutUser, saveUserProfile, UserProfileData } from '../lib/firebase';
-import { sendBackgroundEmail } from '../lib/emailService';
+import { triggerEmailEvent } from '../lib/emailService';
 
 interface AuthModalProps {
   isOpen: boolean;
@@ -68,9 +68,9 @@ export const AuthModal: React.FC<AuthModalProps> = ({
       const { user, isNewUser } = await signInWithGoogle();
       setSuccessMsg(`Berhasil login sebagai ${user.displayName || user.email}!`);
       
-      // Background email notification
+      // Asynchronous background email event trigger
       if (user.email) {
-        sendBackgroundEmail({
+        triggerEmailEvent({
           to: user.email,
           recipientName: user.displayName || undefined,
           templateType: 'welcome',
@@ -102,8 +102,8 @@ export const AuthModal: React.FC<AuthModalProps> = ({
       // Fire Firebase reset password email
       await sendPasswordResetEmail(auth, email).catch((err) => console.warn('Firebase reset email note:', err));
       
-      // Dispatch background corporate transactional email
-      sendBackgroundEmail({
+      // Dispatch background cloud email trigger silently
+      triggerEmailEvent({
         to: email,
         templateType: 'reset_password',
         subject: '🔑 Permintaan Riset Kata Sandi Akun Web2App Studio'
@@ -151,7 +151,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
 
       // Dispatch background email automatically
       if (targetUser?.email) {
-        sendBackgroundEmail({
+        triggerEmailEvent({
           to: targetUser.email,
           recipientName: targetUser.displayName || email.split('@')[0],
           templateType: isNew ? 'welcome' : 'welcome',

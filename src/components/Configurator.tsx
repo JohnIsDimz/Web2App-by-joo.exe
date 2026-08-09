@@ -53,6 +53,25 @@ export const Configurator: React.FC<ConfiguratorProps> = ({
   const isVIP = userProfile?.isAdmin || userPlan === 'Enterprise';
   const isProOrVIP = isVIP || userPlan === 'Pro';
 
+  const handleSelectEngine = (engine: AppConfig['engineType']) => {
+    const isEnterpriseOnly = ['kmp', 'turbo-native', 'harmony-os', 'electron-pro'].includes(engine);
+    const isProOrHigher = ['flutter', 'kotlin', 'swift', 'capacitor', 'react-native', 'tauri'].includes(engine);
+
+    if (isEnterpriseOnly && !isVIP) {
+      alert(`Engine ${engine.toUpperCase()} adalah fitur eksklusif Paket Enterprise VIP (Rp 50.000 / bulan). Silakan tingkatkan paket di Dompet.`);
+      onOpenWalletModal();
+      return;
+    }
+
+    if (isProOrHigher && !isProOrVIP) {
+      alert(`Engine ${engine.toUpperCase()} memerlukan Paket Pro Builder (Rp 25.000 / bulan) atau Enterprise VIP. Paket Starter (Rp 10.000) hanya mendapatkan Basic WebView / PWA Shell.`);
+      onOpenWalletModal();
+      return;
+    }
+
+    onChangeConfig({ engineType: engine });
+  };
+
   const handlePermissionToggle = (key: keyof AppConfig['permissions']) => {
     onChangeConfig({
       permissions: {
@@ -259,7 +278,7 @@ export const Configurator: React.FC<ConfiguratorProps> = ({
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <button
                 type="button"
-                onClick={() => onChangeConfig({ engineType: 'flutter' })}
+                onClick={() => handleSelectEngine('flutter')}
                 className={`p-4 rounded-xl border text-left transition-all ${
                   config.engineType === 'flutter'
                     ? 'bg-sky-500/20 border-sky-500 text-white ring-1 ring-sky-500'
@@ -271,7 +290,7 @@ export const Configurator: React.FC<ConfiguratorProps> = ({
                     <Zap className="w-4 h-4 text-sky-400" />
                     <span>Flutter 3.x Engine (Rekomendasi)</span>
                   </span>
-                  <span className="text-[10px] bg-sky-500/30 text-sky-300 px-2 py-0.5 rounded-full font-mono">Ultra-Fast</span>
+                  <span className="text-[10px] bg-amber-500/20 text-amber-300 border border-amber-500/30 px-2 py-0.5 rounded-full font-bold">Pro 25k</span>
                 </div>
                 <p className="text-xs text-slate-300 mb-2">
                   Menggunakan `webview_flutter` versi terbaru, hardware acceleration GPU, smart cache, and multi-platform compilation (Android, iOS, Web, Desktop).
@@ -285,7 +304,7 @@ export const Configurator: React.FC<ConfiguratorProps> = ({
 
               <button
                 type="button"
-                onClick={() => onChangeConfig({ engineType: 'kotlin' })}
+                onClick={() => handleSelectEngine('kotlin')}
                 className={`p-4 rounded-xl border text-left transition-all ${
                   config.engineType === 'kotlin'
                     ? 'bg-emerald-500/20 border-emerald-500 text-white ring-1 ring-emerald-500'
@@ -297,7 +316,7 @@ export const Configurator: React.FC<ConfiguratorProps> = ({
                     <Smartphone className="w-4 h-4 text-emerald-400" />
                     <span>Android Jetpack Compose</span>
                   </span>
-                  <span className="text-[10px] bg-emerald-500/30 text-emerald-300 px-2 py-0.5 rounded-full font-mono">Pure Native</span>
+                  <span className="text-[10px] bg-amber-500/20 text-amber-300 border border-amber-500/30 px-2 py-0.5 rounded-full font-bold">Pro 25k</span>
                 </div>
                 <p className="text-xs text-slate-300 mb-2">
                   Kotlin + AndroidX WebKit + Material3 Design. Ukuran APK sangat kecil dan dioptimalkan khusus untuk ekosistem Android.
@@ -311,7 +330,7 @@ export const Configurator: React.FC<ConfiguratorProps> = ({
 
               <button
                 type="button"
-                onClick={() => onChangeConfig({ engineType: 'swift' })}
+                onClick={() => handleSelectEngine('swift')}
                 className={`p-4 rounded-xl border text-left transition-all ${
                   config.engineType === 'swift'
                     ? 'bg-purple-500/20 border-purple-500 text-white ring-1 ring-purple-500'
@@ -323,7 +342,7 @@ export const Configurator: React.FC<ConfiguratorProps> = ({
                     <Smartphone className="w-4 h-4 text-purple-400" />
                     <span>iOS Swift / SwiftUI</span>
                   </span>
-                  <span className="text-[10px] bg-purple-500/30 text-purple-300 px-2 py-0.5 rounded-full font-mono">Apple Native</span>
+                  <span className="text-[10px] bg-amber-500/20 text-amber-300 border border-amber-500/30 px-2 py-0.5 rounded-full font-bold">Pro 25k</span>
                 </div>
                 <p className="text-xs text-slate-300 mb-2">
                   SwiftUI + WKWebView + Apple Push Notification Service (APNS). Performa 60FPS murni untuk iPhone & iPad.
@@ -337,7 +356,7 @@ export const Configurator: React.FC<ConfiguratorProps> = ({
 
               <button
                 type="button"
-                onClick={() => onChangeConfig({ engineType: 'capacitor' })}
+                onClick={() => handleSelectEngine('capacitor')}
                 className={`p-4 rounded-xl border text-left transition-all ${
                   config.engineType === 'capacitor'
                     ? 'bg-amber-500/20 border-amber-500 text-white ring-1 ring-amber-500'
@@ -349,7 +368,7 @@ export const Configurator: React.FC<ConfiguratorProps> = ({
                     <Layers className="w-4 h-4 text-amber-400" />
                     <span>Capacitor / PWA Hybrid</span>
                   </span>
-                  <span className="text-[10px] bg-amber-500/30 text-amber-300 px-2 py-0.5 rounded-full font-mono">Cross-PWA</span>
+                  <span className="text-[10px] bg-amber-500/20 text-amber-300 border border-amber-500/30 px-2 py-0.5 rounded-full font-bold">Pro 25k</span>
                 </div>
                 <p className="text-xs text-slate-300 mb-2">
                   Capacitor 6.x runtime dengan Service Worker caching dan akses penuh ke Native Plugins web JS.
@@ -363,7 +382,7 @@ export const Configurator: React.FC<ConfiguratorProps> = ({
 
               <button
                 type="button"
-                onClick={() => onChangeConfig({ engineType: 'react-native' })}
+                onClick={() => handleSelectEngine('react-native')}
                 className={`p-4 rounded-xl border text-left transition-all ${
                   config.engineType === 'react-native'
                     ? 'bg-cyan-500/20 border-cyan-500 text-white ring-1 ring-cyan-500'
@@ -375,7 +394,7 @@ export const Configurator: React.FC<ConfiguratorProps> = ({
                     <Code className="w-4 h-4 text-cyan-400" />
                     <span>React Native / Expo Engine</span>
                   </span>
-                  <span className="text-[10px] bg-cyan-500/30 text-cyan-300 px-2 py-0.5 rounded-full font-mono">Baru & Modern</span>
+                  <span className="text-[10px] bg-amber-500/20 text-amber-300 border border-amber-500/30 px-2 py-0.5 rounded-full font-bold">Pro 25k</span>
                 </div>
                 <p className="text-xs text-slate-300 mb-2">
                   React Native 0.74 + Expo Webview shell. Dioptimalkan untuk kompatibilitas JavaScript modern dan Fast Refresh.
@@ -389,7 +408,7 @@ export const Configurator: React.FC<ConfiguratorProps> = ({
 
               <button
                 type="button"
-                onClick={() => onChangeConfig({ engineType: 'tauri' })}
+                onClick={() => handleSelectEngine('tauri')}
                 className={`p-4 rounded-xl border text-left transition-all ${
                   config.engineType === 'tauri'
                     ? 'bg-rose-500/20 border-rose-500 text-white ring-1 ring-rose-500'
@@ -401,7 +420,7 @@ export const Configurator: React.FC<ConfiguratorProps> = ({
                     <Cpu className="w-4 h-4 text-rose-400" />
                     <span>Tauri 2.0 Rust Engine</span>
                   </span>
-                  <span className="text-[10px] bg-rose-500/30 text-rose-300 px-2 py-0.5 rounded-full font-mono">Rust Power</span>
+                  <span className="text-[10px] bg-amber-500/20 text-amber-300 border border-amber-500/30 px-2 py-0.5 rounded-full font-bold">Pro 25k</span>
                 </div>
                 <p className="text-xs text-slate-300 mb-2">
                   Engine Tauri versi 2 (Rust + WebView2/WKWebView). Ukuran executable sangat kecil (&lt; 5MB) dan keamanan tingkat tinggi.
@@ -415,7 +434,7 @@ export const Configurator: React.FC<ConfiguratorProps> = ({
 
               <button
                 type="button"
-                onClick={() => onChangeConfig({ engineType: 'pwa-shell' })}
+                onClick={() => handleSelectEngine('pwa-shell')}
                 className={`p-4 rounded-xl border text-left transition-all ${
                   config.engineType === 'pwa-shell'
                     ? 'bg-indigo-500/20 border-indigo-500 text-white ring-1 ring-indigo-500'
@@ -427,7 +446,7 @@ export const Configurator: React.FC<ConfiguratorProps> = ({
                     <Globe className="w-4 h-4 text-indigo-400" />
                     <span>PWA Standalone WebShell</span>
                   </span>
-                  <span className="text-[10px] bg-indigo-500/30 text-indigo-300 px-2 py-0.5 rounded-full font-mono">Web-Only</span>
+                  <span className="text-[10px] bg-sky-500/20 text-sky-300 border border-sky-500/30 px-2 py-0.5 rounded-full font-bold">Starter 10k</span>
                 </div>
                 <p className="text-xs text-slate-300 mb-2">
                   Manifest V3 Progressive Web App dengan Workbox Service Worker offline caching. Tanpa butuh SDK Android/iOS.
@@ -441,7 +460,7 @@ export const Configurator: React.FC<ConfiguratorProps> = ({
 
               <button
                 type="button"
-                onClick={() => onChangeConfig({ engineType: 'kmp' })}
+                onClick={() => handleSelectEngine('kmp')}
                 className={`p-4 rounded-xl border text-left transition-all ${
                   config.engineType === 'kmp'
                     ? 'bg-purple-500/20 border-purple-500 text-white ring-1 ring-purple-500'
@@ -453,7 +472,7 @@ export const Configurator: React.FC<ConfiguratorProps> = ({
                     <Zap className="w-4 h-4 text-purple-400" />
                     <span>Kotlin Multiplatform (KMP)</span>
                   </span>
-                  <span className="text-[10px] bg-purple-500/30 text-purple-300 px-2 py-0.5 rounded-full font-mono">Next-Gen</span>
+                  <span className="text-[10px] bg-purple-500/20 text-purple-300 border border-purple-500/30 px-2 py-0.5 rounded-full font-bold">Enterprise 50k</span>
                 </div>
                 <p className="text-xs text-slate-300 mb-2">
                   KMP shared business logic + Compose Multiplatform UI. Performa kompilasi murni LLVM/JVM untuk Android & iOS.
@@ -467,7 +486,7 @@ export const Configurator: React.FC<ConfiguratorProps> = ({
 
               <button
                 type="button"
-                onClick={() => onChangeConfig({ engineType: 'turbo-native' })}
+                onClick={() => handleSelectEngine('turbo-native')}
                 className={`p-4 rounded-xl border text-left transition-all ${
                   config.engineType === 'turbo-native'
                     ? 'bg-emerald-500/20 border-emerald-500 text-white ring-1 ring-emerald-500'
@@ -479,7 +498,7 @@ export const Configurator: React.FC<ConfiguratorProps> = ({
                     <Smartphone className="w-4 h-4 text-emerald-400" />
                     <span>Hotwire Turbo Native Engine</span>
                   </span>
-                  <span className="text-[10px] bg-emerald-500/30 text-emerald-300 px-2 py-0.5 rounded-full font-mono">Real-Time Web</span>
+                  <span className="text-[10px] bg-purple-500/20 text-purple-300 border border-purple-500/30 px-2 py-0.5 rounded-full font-bold">Enterprise 50k</span>
                 </div>
                 <p className="text-xs text-slate-300 mb-2">
                   Engine navigasi Hotwire/Turbo untuk menyatukan halaman web real-time server dengan transisi layar native super mulus.
@@ -493,7 +512,7 @@ export const Configurator: React.FC<ConfiguratorProps> = ({
 
               <button
                 type="button"
-                onClick={() => onChangeConfig({ engineType: 'harmony-os' })}
+                onClick={() => handleSelectEngine('harmony-os')}
                 className={`p-4 rounded-xl border text-left transition-all ${
                   config.engineType === 'harmony-os'
                     ? 'bg-blue-500/20 border-blue-500 text-white ring-1 ring-blue-500'
@@ -505,7 +524,7 @@ export const Configurator: React.FC<ConfiguratorProps> = ({
                     <Cpu className="w-4 h-4 text-blue-400" />
                     <span>OpenHarmony (ArkUI Engine)</span>
                   </span>
-                  <span className="text-[10px] bg-blue-500/30 text-blue-300 px-2 py-0.5 rounded-full font-mono">Global OS</span>
+                  <span className="text-[10px] bg-purple-500/20 text-purple-300 border border-purple-500/30 px-2 py-0.5 rounded-full font-bold">Enterprise 50k</span>
                 </div>
                 <p className="text-xs text-slate-300 mb-2">
                   Mesin ArkUI & WebKit Huawei HarmonyOS NEXT untuk ekosistem perangkat pintar global terbaru.
@@ -519,7 +538,7 @@ export const Configurator: React.FC<ConfiguratorProps> = ({
 
               <button
                 type="button"
-                onClick={() => onChangeConfig({ engineType: 'electron-pro' })}
+                onClick={() => handleSelectEngine('electron-pro')}
                 className={`p-4 rounded-xl border text-left transition-all ${
                   config.engineType === 'electron-pro'
                     ? 'bg-amber-500/20 border-amber-500 text-white ring-1 ring-amber-500'
@@ -531,7 +550,7 @@ export const Configurator: React.FC<ConfiguratorProps> = ({
                     <Code className="w-4 h-4 text-amber-400" />
                     <span>Electron Pro Desktop Engine</span>
                   </span>
-                  <span className="text-[10px] bg-amber-500/30 text-amber-300 px-2 py-0.5 rounded-full font-mono">Windows/Mac/Linux</span>
+                  <span className="text-[10px] bg-purple-500/20 text-purple-300 border border-purple-500/30 px-2 py-0.5 rounded-full font-bold">Enterprise 50k</span>
                 </div>
                 <p className="text-xs text-slate-300 mb-2">
                   Chromium 126 + Node.js 20 wrapper produksi dengan fitur tray bar, installer `.exe`, `.dmg`, `.AppImage`, & auto-updater.
