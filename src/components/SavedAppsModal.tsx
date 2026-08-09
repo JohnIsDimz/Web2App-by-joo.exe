@@ -59,7 +59,7 @@ export const SavedAppsModal: React.FC<SavedAppsModalProps> = ({
                     {app.iconUrl ? (
                       <img src={app.iconUrl} alt={app.appName} className="w-full h-full object-cover rounded-lg" />
                     ) : (
-                      <span>{app.iconEmoji}</span>
+                      <span>📱</span>
                     )}
                   </div>
 

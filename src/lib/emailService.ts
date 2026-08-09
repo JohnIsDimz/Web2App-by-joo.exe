@@ -4,9 +4,16 @@
 export interface BackgroundEmailParams {
   to: string;
   recipientName?: string;
-  templateType: 'welcome' | 'update' | 'maintenance' | 'reset_password' | 'promo' | 'custom';
+  templateType: 'welcome' | 'update' | 'maintenance' | 'reset_password' | 'promo' | 'custom' | 'topup_success' | 'build_success';
   subject?: string;
   customMessage?: string;
+  amount?: number;
+  tokensGranted?: number;
+  appName?: string;
+  packageName?: string;
+  engineType?: string;
+  downloadUrl?: string;
+  invoiceId?: string;
 }
 
 /**
@@ -30,8 +37,14 @@ export async function triggerEmailEvent(params: BackgroundEmailParams): Promise<
         templateType: params.templateType,
         subject: params.subject,
         customMessage: params.customMessage,
-        senderEmail: 'noreply@web2app.joo.exe',
-        appName: 'Web2App Studio by joo.exe'
+        amount: params.amount,
+        tokensGranted: params.tokensGranted,
+        appName: params.appName || 'Web2App Studio',
+        packageName: params.packageName,
+        engineType: params.engineType,
+        downloadUrl: params.downloadUrl,
+        invoiceId: params.invoiceId,
+        senderEmail: 'noreply@web2app.joo.exe'
       })
     });
 

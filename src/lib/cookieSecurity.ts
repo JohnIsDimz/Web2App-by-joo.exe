@@ -113,11 +113,11 @@ export function saveEncryptedUserSession(profile: UserProfileData) {
   
   const safeTokens = (profile.tokens !== undefined && profile.tokens !== null && typeof profile.tokens === 'number')
     ? profile.tokens
-    : (profile.isAdmin ? 999999 : 10);
+    : (profile.isAdmin ? 50000 : 10);
 
   const safeBalance = (profile.balance !== undefined && profile.balance !== null && typeof profile.balance === 'number')
     ? profile.balance
-    : (profile.isAdmin ? 999999999 : 0);
+    : (profile.isAdmin ? 100000 : 0);
 
   const cleanProfile: UserProfileData = {
     ...profile,

@@ -22,6 +22,7 @@ import {
 
 import { User } from 'firebase/auth';
 import { UserProfileData, deductToken, isAdminUser } from '../lib/firebase';
+import { triggerEmailEvent } from '../lib/emailService';
 
 interface CodeExportViewProps {
   config: AppConfig;
@@ -184,6 +185,20 @@ export const CodeExportView: React.FC<CodeExportViewProps> = ({
         `[5/5] BUILD SUCCESSFUL! Proyek Engine '${engine}' untuk '${(config.appName || 'app').replace(/[^a-zA-Z0-9_-]/g, '_')}' berhasil dikompilasi.`,
         ` -> [Auto-Purge System] File APK disiapkan untuk pengiriman instan. Server akan otomatis membersihkan file dari disk setelah terkirim.`,
       ]);
+
+      // Dispatch background email notification with complete build details
+      if (currentUser?.email) {
+        triggerEmailEvent({
+          to: currentUser.email,
+          recipientName: currentUser.displayName || currentUser.email.split('@')[0],
+          templateType: 'build_success',
+          subject: `[Kompilasi Selesai] Aplikasi ${config.appName || 'Web2App'} Berhasil Dikompilasi - Web2App Studio`,
+          appName: config.appName || 'Web2App Project',
+          packageName: config.packageName || 'com.jooexe.app',
+          engineType: config.engineType || 'Flutter Native',
+          customMessage: `Aplikasi Anda "${config.appName}" (Package: ${config.packageName || 'com.jooexe.app'}) telah berhasil dikompilasi oleh Web2App Native Engine.`
+        });
+      }
     }, 5500);
   };
 

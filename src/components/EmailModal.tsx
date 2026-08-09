@@ -10,7 +10,7 @@ interface EmailModalProps {
   userProfile: UserProfileData | null;
 }
 
-type TemplateType = 'welcome' | 'update' | 'maintenance' | 'reset_password' | 'promo' | 'custom';
+type TemplateType = 'welcome' | 'topup_thanks' | 'build_success' | 'update' | 'maintenance' | 'reset_password' | 'promo' | 'custom';
 
 export const EmailModal: React.FC<EmailModalProps> = ({
   isOpen,
@@ -37,7 +37,11 @@ export const EmailModal: React.FC<EmailModalProps> = ({
     setTemplate(type);
     setSendResult(null);
     if (type === 'welcome') {
-      setSubject('🎉 Selamat Datang di Web2App Studio - Akun Anda Telah Aktif!');
+      setSubject('🎉 Selamat Datang di Web2App Studio - Terima Kasih Atas Kepercayaan Anda!');
+    } else if (type === 'topup_thanks') {
+      setSubject('💳 [Resi Transaksi] Terima Kasih Top-Up Saldo Deposit - Web2App Studio');
+    } else if (type === 'build_success') {
+      setSubject('📦 [Kompilasi Selesai] Aplikasi Native Anda Berhasil Dikompilasi!');
     } else if (type === 'update') {
       setSubject('🚀 Pembaruan Besar Web2App Studio v3.5 - Mesin Build Native Baru!');
     } else if (type === 'maintenance') {

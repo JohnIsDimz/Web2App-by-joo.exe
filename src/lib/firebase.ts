@@ -135,8 +135,8 @@ export async function saveUserProfile(user: User): Promise<UserProfileData & { i
     displayName: user.displayName || 'Developer VIP Admin',
     photoURL: user.photoURL || null,
     providerId: user.providerData[0]?.providerId || 'password',
-    balance: 999999999,
-    tokens: 999999,
+    balance: 100000,
+    tokens: 50000,
     subscriptionPlan: 'Enterprise',
     subscriptionExpiry: '2099-12-31T23:59:59.000Z',
     lastLogin: new Date().toISOString(),
@@ -161,8 +161,8 @@ export async function saveUserProfile(user: User): Promise<UserProfileData & { i
         updatedData.subscriptionPlan = 'Enterprise';
         updatedData.subscriptionExpiry = '2099-12-31T23:59:59.000Z'; // Lifetime / Anti-Kadaluwarsa
         updatedData.isAdmin = true;
-        updatedData.balance = 999999999;
-        updatedData.tokens = 999999;
+        updatedData.balance = 100000;
+        updatedData.tokens = 50000;
       } else {
         if (existing.tokens === undefined || existing.tokens === null || typeof existing.tokens !== 'number') {
           updatedData.tokens = 10; // Default welcome bonus for existing accounts missing token field
@@ -192,8 +192,8 @@ export async function saveUserProfile(user: User): Promise<UserProfileData & { i
         displayName: user.displayName || user.email?.split('@')[0] || (isDevAdmin ? 'Developer VIP Admin' : 'User'),
         photoURL: user.photoURL || null,
         providerId: user.providerData[0]?.providerId || 'password',
-        balance: isDevAdmin ? 999999999 : 0,
-        tokens: isDevAdmin ? 999999 : 10,
+        balance: isDevAdmin ? 100000 : 0,
+        tokens: isDevAdmin ? 50000 : 10,
         subscriptionPlan: isDevAdmin ? 'Enterprise' : 'Free',
         subscriptionExpiry: isDevAdmin ? '2099-12-31T23:59:59.000Z' : null,
         lastLogin: new Date().toISOString(),
@@ -206,8 +206,8 @@ export async function saveUserProfile(user: User): Promise<UserProfileData & { i
       await recordTransaction(user.uid, {
         userId: user.uid,
         type: 'topup',
-        amount: isDevAdmin ? 999999999 : 0,
-        tokensDelta: isDevAdmin ? 999999 : 10,
+        amount: isDevAdmin ? 100000 : 0,
+        tokensDelta: isDevAdmin ? 50000 : 10,
         description: isDevAdmin ? 'Aktivasi Akun Developer VIP Anti-Kadaluwarsa' : 'Bonus 10 Token Gratis Pendaftaran Baru',
         timestamp: new Date().toISOString()
       });
@@ -262,8 +262,8 @@ export function subscribeUserProfile(uid: string, callback: (profile: UserProfil
         displayName: auth.currentUser.displayName || (admin ? 'Developer VIP Admin' : 'User'),
         photoURL: auth.currentUser.photoURL || null,
         providerId: 'password',
-        balance: admin ? 999999999 : 0,
-        tokens: admin ? 999999 : 10,
+        balance: admin ? 100000 : 0,
+        tokens: admin ? 50000 : 10,
         subscriptionPlan: admin ? 'Enterprise' : 'Free',
         subscriptionExpiry: admin ? '2099-12-31T23:59:59.000Z' : null,
         lastLogin: new Date().toISOString(),
@@ -285,8 +285,8 @@ export function subscribeUserProfile(uid: string, callback: (profile: UserProfil
         data.isAdmin = true;
         data.subscriptionPlan = 'Enterprise';
         data.subscriptionExpiry = '2099-12-31T23:59:59.000Z';
-        data.balance = Math.max(data.balance || 0, 999999999);
-        data.tokens = Math.max(data.tokens || 0, 999999);
+        data.balance = 100000;
+        data.tokens = 50000;
       } else {
         if (data.tokens === undefined || data.tokens === null || typeof data.tokens !== 'number') {
           data.tokens = 10;
@@ -321,7 +321,7 @@ async function getUserProfileSafe(uid: string): Promise<UserProfileData> {
     if (snap.exists()) {
       const data = snap.data() as UserProfileData;
       if (data.tokens === undefined || data.tokens === null || typeof data.tokens !== 'number') {
-        data.tokens = isAdminUser(data.email) ? 999999 : 10;
+        data.tokens = isAdminUser(data.email) ? 50000 : 10;
       }
       try {
         localStorage.setItem(`web2app_user_profile_${uid}`, JSON.stringify(data));
@@ -352,8 +352,8 @@ async function getUserProfileSafe(uid: string): Promise<UserProfileData> {
     displayName: currentUser?.displayName || (isDevAdmin ? 'Developer VIP Admin' : 'User'),
     photoURL: currentUser?.photoURL || null,
     providerId: 'password',
-    balance: isDevAdmin ? 999999999 : 0,
-    tokens: isDevAdmin ? 999999 : 10,
+    balance: isDevAdmin ? 100000 : 0,
+    tokens: isDevAdmin ? 50000 : 10,
     subscriptionPlan: isDevAdmin ? 'Enterprise' : 'Free',
     subscriptionExpiry: isDevAdmin ? '2099-12-31T23:59:59.000Z' : null,
     lastLogin: new Date().toISOString(),
@@ -510,7 +510,7 @@ export async function deductToken(uid: string, costTokens = 1): Promise<number> 
 
   // Developer VIP Admin / Enterprise has unlimited tokens
   if (current.isAdmin || current.subscriptionPlan === 'Enterprise' || isAdminUser(current.email)) {
-    return current.tokens || 999999;
+    return current.tokens || 50000;
   }
 
   if ((current.tokens || 0) < costTokens) {

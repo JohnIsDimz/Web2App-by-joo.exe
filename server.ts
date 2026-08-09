@@ -108,7 +108,7 @@ app.get("/api/vps-status", (_req, res) => {
   });
 });
 
-// Endpoint to inspect and analyze a target URL
+// Endpoint to inspect and proxy a target URL with Cloudflare & WAF Bypass Headers
 app.get("/api/proxy", async (req, res) => {
   try {
     const rawUrl = req.query.url as string;
@@ -124,44 +124,172 @@ app.get("/api/proxy", async (req, res) => {
     const urlObj = new URL(targetUrl);
 
     const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 10000);
+    const timeout = setTimeout(() => controller.abort(), 12000);
 
-    const response = await fetch(targetUrl, {
-      headers: {
-        "User-Agent":
-          "Mozilla/5.0 (Linux; Android 13; Pixel 7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/116.0.0.0 Mobile Safari/537.36",
-        "Accept-Language": "id-ID,id;q=0.9,en-US;q=0.8,en;q=0.7",
-      },
-      signal: controller.signal,
-    });
+    // Advanced Chrome User Agent and Client Hints to bypass Cloudflare & Anti-Bot WAFs
+    const headers: Record<string, string> = {
+      "User-Agent":
+        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
+      "Accept":
+        "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7",
+      "Accept-Language": "id-ID,id;q=0.9,en-US;q=0.8,en;q=0.7",
+      "Accept-Encoding": "gzip, deflate, br",
+      "Sec-Ch-Ua": `"Chromium";v="124", "Google Chrome";v="124", "Not-A.Brand";v="99"`,
+      "Sec-Ch-Ua-Mobile": "?0",
+      "Sec-Ch-Ua-Platform": `"Windows"`,
+      "Sec-Fetch-Dest": "document",
+      "Sec-Fetch-Mode": "navigate",
+      "Sec-Fetch-Site": "none",
+      "Sec-Fetch-User": "?1",
+      "Upgrade-Insecure-Requests": "1",
+      "Cache-Control": "max-age=0",
+    };
+
+    if (req.headers.cookie) {
+      headers["Cookie"] = req.headers.cookie;
+    }
+
+    let response: Response;
+    try {
+      response = await fetch(targetUrl, {
+        headers,
+        signal: controller.signal,
+        redirect: "follow",
+      });
+    } catch (fetchErr: any) {
+      clearTimeout(timeout);
+      // Fallback response if target site blocks connection or times out
+      res.setHeader("Content-Type", "text/html; charset=utf-8");
+      return res.send(`
+        <!DOCTYPE html>
+        <html>
+          <head>
+            <meta charset="UTF-8">
+            <meta name="viewport" content="width=device-width, initial-scale=1.0">
+            <style>
+              body { font-family: system-ui, -apple-system, sans-serif; background: #0f172a; color: #f8fafc; padding: 1.5rem; text-align: center; display: flex; align-items: center; justify-content: center; min-height: 100vh; margin: 0; }
+              .card { background: #1e293b; padding: 2rem; border-radius: 1.25rem; max-width: 420px; width: 100%; border: 1px solid #334155; box-shadow: 0 25px 50px -12px rgba(0,0,0,0.5); }
+              .icon { font-size: 2.8rem; margin-bottom: 0.75rem; }
+              .badge { display: inline-block; background: #0284c7; color: white; padding: 0.25rem 0.75rem; border-radius: 9999px; font-size: 0.75rem; font-weight: 700; margin-bottom: 1rem; }
+              h3 { font-size: 1.25rem; font-weight: 800; margin: 0 0 0.5rem 0; color: #f8fafc; }
+              p { font-size: 0.875rem; color: #94a3b8; line-height: 1.6; margin-bottom: 1.5rem; }
+              .btn-primary { background: #38bdf8; color: #0f172a; text-decoration: none; padding: 0.75rem 1.25rem; border-radius: 0.75rem; font-weight: 800; font-size: 0.875rem; display: block; transition: all 0.2s; }
+              .btn-primary:hover { background: #7dd3fc; }
+            </style>
+          </head>
+          <body>
+            <div class="card">
+              <div class="icon">🌐</div>
+              <div class="badge">Web2App Native Engine</div>
+              <h3>Pratinjau Live Website</h3>
+              <p>Situs (<strong>${targetUrl}</strong>) membatasi pengaksesan via iFrame browser proxy. Namun aplikasi APK Flutter Native akan memuat situs ini 100% sempurna tanpa hambatan!</p>
+              <a href="${targetUrl}" target="_blank" rel="noopener noreferrer" class="btn-primary">
+                🌐 Buka Website Di Tab Baru
+              </a>
+            </div>
+          </body>
+        </html>
+      `);
+    }
+
     clearTimeout(timeout);
 
+    const statusCode = response.status;
     const contentType = response.headers.get("content-type") || "text/html";
 
-    // If it's HTML, inject <base href="..."> so images, css, js resolve correctly
+    // Handle Cloudflare / WAF 403 or 503 challenge pages gracefully
+    if (statusCode === 403 || statusCode === 503) {
+      res.setHeader("Content-Type", "text/html; charset=utf-8");
+      return res.send(`
+        <!DOCTYPE html>
+        <html>
+          <head>
+            <meta charset="UTF-8">
+            <meta name="viewport" content="width=device-width, initial-scale=1.0">
+            <style>
+              body { font-family: system-ui, -apple-system, sans-serif; background: #0f172a; color: #f8fafc; padding: 1.5rem; text-align: center; display: flex; align-items: center; justify-content: center; min-height: 100vh; margin: 0; }
+              .card { background: #1e293b; padding: 2rem; border-radius: 1.25rem; max-width: 420px; width: 100%; border: 1px solid #334155; box-shadow: 0 25px 50px -12px rgba(0,0,0,0.5); }
+              .icon { font-size: 2.8rem; margin-bottom: 0.75rem; }
+              .badge { display: inline-block; background: #38bdf8; color: #0f172a; padding: 0.25rem 0.75rem; border-radius: 9999px; font-size: 0.75rem; font-weight: 800; margin-bottom: 1rem; }
+              h3 { font-size: 1.25rem; font-weight: 800; margin: 0 0 0.5rem 0; color: #f8fafc; }
+              p { font-size: 0.875rem; color: #94a3b8; line-height: 1.6; margin-bottom: 1.25rem; }
+              .info-box { background: #0f172a; border: 1px solid #334155; border-radius: 0.75rem; padding: 0.875rem; text-align: left; margin-bottom: 1.25rem; font-size: 0.75rem; color: #cbd5e1; }
+              .btn-group { display: flex; flex-direction: column; gap: 0.75rem; }
+              .btn-primary { background: #38bdf8; color: #0f172a; text-decoration: none; padding: 0.75rem 1.25rem; border-radius: 0.75rem; font-weight: 800; font-size: 0.875rem; display: block; transition: all 0.2s; }
+              .btn-primary:hover { background: #7dd3fc; }
+              .btn-secondary { background: #334155; color: white; border: none; padding: 0.75rem 1.25rem; border-radius: 0.75rem; font-weight: 700; font-size: 0.875rem; cursor: pointer; transition: all 0.2s; }
+              .btn-secondary:hover { background: #475569; }
+            </style>
+          </head>
+          <body>
+            <div class="card">
+              <div class="icon">🛡️</div>
+              <div class="badge">Proteksi Cloudflare / WAF Detected</div>
+              <h3>Proteksi Cloudflare Aktif</h3>
+              <p>Situs (<strong>${targetUrl}</strong>) mengaktifkan proteksi Cloudflare JS Challenge / WAF untuk iFrame browser Web Proxy.</p>
+
+              <div class="info-box">
+                <strong style="color:#38bdf8; display:block; margin-bottom:4px;">💡 Informasi Penting Web2App Engine:</strong>
+                Aplikasi APK Flutter Native hasil kompilasi akan berjalan di <strong>Mobile Chrome Android WebView murni</strong> yang LULUS 100% verifikasi Cloudflare tanpa terblokir.
+              </div>
+
+              <div class="btn-group">
+                <a href="${targetUrl}" target="_blank" rel="noopener noreferrer" class="btn-primary">
+                  🌐 Buka Langsung Situs Di Tab Baru
+                </a>
+                <button onclick="window.location.reload()" class="btn-secondary">
+                  🔄 Coba Muat Ulang Proxy
+                </button>
+              </div>
+            </div>
+          </body>
+        </html>
+      `);
+    }
+
     if (contentType.includes("text/html")) {
       let html = await response.text();
 
-      // Remove framing restrictions and frame busters
+      // Remove framing restrictions, X-Frame-Options & top-location frame busters
       html = html.replace(/if\s*\(\s*top\s*!=\s*self\s*\)\s*top\.location\s*=\s*self\.location;/gi, "");
+      html = html.replace(/top\.location\.href\s*=/gi, "// top.location.href=");
 
+      // Inject base tag for resolving relative assets
       const baseTag = `<base href="${urlObj.origin}${urlObj.pathname.endsWith("/") ? urlObj.pathname : urlObj.pathname + "/"}">`;
+
+      // Inject frame buster bypass & error handler script
+      const proxyScript = `
+        <script>
+          (function() {
+            try {
+              window.onerror = function() { return true; };
+              if (window.self !== window.top) {
+                window.top = window.self;
+              }
+            } catch(e) {}
+          })();
+        </script>
+      `;
+
       if (html.includes("<head>")) {
-        html = html.replace("<head>", `<head>${baseTag}`);
+        html = html.replace("<head>", `<head>${baseTag}${proxyScript}`);
       } else if (html.includes("<HEAD>")) {
-        html = html.replace("<HEAD>", `<HEAD>${baseTag}`);
+        html = html.replace("<HEAD>", `<HEAD>${baseTag}${proxyScript}`);
       } else {
-        html = `${baseTag}${html}`;
+        html = `${baseTag}${proxyScript}${html}`;
       }
 
       res.setHeader("Content-Type", "text/html; charset=utf-8");
       res.removeHeader("X-Frame-Options");
       res.removeHeader("Content-Security-Policy");
+      res.removeHeader("X-Content-Type-Options");
       return res.send(html);
     } else {
       // Stream asset directly
       const buffer = await response.arrayBuffer();
       res.setHeader("Content-Type", contentType);
+      res.removeHeader("X-Frame-Options");
+      res.removeHeader("Content-Security-Policy");
       return res.send(Buffer.from(buffer));
     }
   } catch (error: any) {
@@ -172,7 +300,7 @@ app.get("/api/proxy", async (req, res) => {
           <meta charset="UTF-8">
           <meta name="viewport" content="width=device-width, initial-scale=1.0">
           <style>
-            body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background: #0f172a; color: #f8fafc; padding: 2rem; text-align: center; display: flex; align-items: center; justify-content: center; min-height: 100vh; margin: 0; }
+            body { font-family: system-ui, -apple-system, sans-serif; background: #0f172a; color: #f8fafc; padding: 2rem; text-align: center; display: flex; align-items: center; justify-content: center; min-height: 100vh; margin: 0; }
             .card { background: #1e293b; padding: 2rem; border-radius: 1rem; max-width: 380px; width: 100%; border: 1px solid #334155; box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.5); }
             .icon { font-size: 2.5rem; margin-bottom: 1rem; }
             h3 { font-size: 1.125rem; font-weight: 700; margin: 0 0 0.5rem 0; color: #f1f5f9; }
@@ -187,7 +315,7 @@ app.get("/api/proxy", async (req, res) => {
             <div class="icon">🌐</div>
             <div class="badge">Web2App Native Engine</div>
             <h3>Pratinjau Simulator</h3>
-            <p>Website (${req.query.url || ''}) memblokir frame web proxy. Namun APK Flutter Native akan memuat URL ini dengan sempurna di perangkat mobile!</p>
+            <p>Website (${req.query.url || ''}) membatasi frame web proxy. Namun APK Flutter Native akan memuat URL ini dengan sempurna di perangkat mobile!</p>
             <button onclick="window.location.reload()">Coba Muat Ulang</button>
           </div>
         </body>
@@ -883,7 +1011,19 @@ app.post("/api/github/build-trigger", (req, res) => {
 // Corporate Email & Transactional Notification Dispatcher Route
 app.post("/api/send-email", async (req, res) => {
   try {
-    const { to, recipientName, templateType, subject, customMessage, appName } = req.body || {};
+    const { 
+      to, 
+      recipientName, 
+      templateType, 
+      subject, 
+      customMessage, 
+      amount, 
+      tokensGranted, 
+      appName, 
+      packageName, 
+      engineType, 
+      invoiceId 
+    } = req.body || {};
 
     if (!to || typeof to !== "string" || !to.includes("@")) {
       return res.status(400).json({
@@ -892,39 +1032,141 @@ app.post("/api/send-email", async (req, res) => {
       });
     }
 
-    const emailSubject = subject || "Notifikasi dari Web2App Studio";
+    const emailSubject = subject || "Notifikasi Resmi dari Web2App Studio";
     const name = recipientName || to.split("@")[0];
-    const resendApiKey = process.env.RESEND_API_KEY;
+    const resendApiKey = process.env.RESEND_API_KEY ? process.env.RESEND_API_KEY.trim() : "";
+    const fromAddress = process.env.RESEND_FROM_EMAIL || "Web2App Studio <onboarding@resend.dev>";
 
-    // Generate Clean Professional HTML Body with Warm Welcome Details
+    // Generate Clean, Professional & Detailed HTML Body
     let htmlContent = ``;
 
-    if (templateType === 'welcome') {
+    if (templateType === 'topup_success' || templateType === 'topup_thanks') {
+      const formattedAmount = amount ? Number(amount).toLocaleString('id-ID') : '0';
+      const tokens = tokensGranted || Math.floor((amount || 0) / 1000);
+      const trxId = invoiceId || `INV-${Date.now()}`;
+      const nowStr = new Date().toLocaleString('id-ID', { dateStyle: 'full', timeStyle: 'short' });
+
       htmlContent = `
-        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; background: #0f172a; color: #f8fafc; padding: 28px; border-radius: 18px; border: 1px solid #334155;">
-          <div style="border-bottom: 1px solid #334155; padding-bottom: 18px; margin-bottom: 22px; text-align: center;">
-            <h2 style="color: #38bdf8; margin: 0; font-size: 24px; font-weight: 800;">Web2App Studio</h2>
+        <div style="font-family: Arial, sans-serif; max-width: 620px; margin: 0 auto; background: #0f172a; color: #f8fafc; padding: 28px; border-radius: 18px; border: 1px solid #334155; box-shadow: 0 10px 25px rgba(0,0,0,0.5);">
+          <div style="border-bottom: 1px solid #334155; padding-bottom: 20px; margin-bottom: 22px; text-align: center;">
+            <h2 style="color: #38bdf8; margin: 0; font-size: 26px; font-weight: 800; letter-spacing: -0.5px;">Web2App Studio</h2>
+            <span style="color: #94a3b8; font-size: 13px;">Resi Transaksi & Ucapan Terima Kasih Pembayaran</span>
+          </div>
+          
+          <p style="font-size: 16px; line-height: 1.6; color: #f1f5f9;">Yth. Bapak/Ibu <strong>${name}</strong>,</p>
+          
+          <p style="font-size: 14px; line-height: 1.7; color: #cbd5e1;">
+            <strong>Terima kasih banyak atas transaksi pembayaran Anda!</strong> Kami mengonfirmasi bahwa pembayaran Top-Up Saldo / Token Deposit Anda telah <strong style="color: #4ade80;">BERHASIL DITERIMA & DIVERIFIKASI</strong> secara otomatis oleh sistem kami.
+          </p>
+
+          <div style="background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%); padding: 22px; border-radius: 14px; margin: 24px 0; border: 1px solid #38bdf8;">
+            <h3 style="margin-top: 0; color: #38bdf8; font-size: 16px; border-bottom: 1px solid #334155; padding-bottom: 10px;">📋 Rincian Resi Pembayaran:</h3>
+            <table style="width: 100%; font-size: 13px; color: #e2e8f0; border-collapse: collapse;">
+              <tr>
+                <td style="padding: 6px 0; color: #94a3b8;">Nomor Invoice:</td>
+                <td style="padding: 6px 0; font-weight: bold; font-family: monospace; text-align: right; color: #38bdf8;">${trxId}</td>
+              </tr>
+              <tr>
+                <td style="padding: 6px 0; color: #94a3b8;">Waktu Transaksi:</td>
+                <td style="padding: 6px 0; text-align: right;">${nowStr}</td>
+              </tr>
+              <tr>
+                <td style="padding: 6px 0; color: #94a3b8;">Total Deposit (Rp):</td>
+                <td style="padding: 6px 0; font-weight: bold; text-align: right; color: #4ade80; font-size: 15px;">Rp ${formattedAmount}</td>
+              </tr>
+              <tr>
+                <td style="padding: 6px 0; color: #94a3b8;">Token Ditambahkan:</td>
+                <td style="padding: 6px 0; font-weight: bold; text-align: right; color: #facc15;">+${tokens} Token</td>
+              </tr>
+              <tr>
+                <td style="padding: 6px 0; color: #94a3b8;">Metode Pembayaran:</td>
+                <td style="padding: 6px 0; text-align: right;">BuatQRIS Dynamic QRIS / Instant Gateway</td>
+              </tr>
+              <tr>
+                <td style="padding: 6px 0; color: #94a3b8;">Status Transaksi:</td>
+                <td style="padding: 6px 0; text-align: right;"><span style="background: #166534; color: #4ade80; padding: 2px 8px; border-radius: 999px; font-weight: bold; font-size: 11px;">LUNAS / VERIFIED</span></td>
+              </tr>
+            </table>
+          </div>
+
+          <p style="font-size: 13px; line-height: 1.6; color: #94a3b8;">
+            Saldo deposit dan token build Anda kini telah aktif penuh dan dapat digunakan langsung untuk melakukan kompilasi APK Native, PWA, iOS, dan Desktop App di dasbor Web2App Studio.
+          </p>
+
+          <p style="font-size: 13px; line-height: 1.6; color: #94a3b8;">
+            Atas perhatian, dukungan, dan kepercayaan Anda kepada Web2App Studio, kami ucapkan terima kasih yang sebesar-besarnya!
+          </p>
+
+          <div style="border-top: 1px solid #334155; padding-top: 18px; margin-top: 28px; text-align: center; font-size: 12px; color: #64748b;">
+            <p style="margin: 0;">© 2026 Web2App Studio by joo.exe. Seluruh Hak Cipta Dilindungi.</p>
+            <p style="margin: 4px 0 0 0;">Layanan Bantuan & Developer: johnisdimz@gmail.com</p>
+          </div>
+        </div>
+      `;
+    } else if (templateType === 'build_success' || templateType === 'apk_compiled') {
+      const targetApp = appName || 'Aplikasi Anda';
+      const targetPkg = packageName || 'com.jooexe.app';
+      const targetEngine = engineType || 'Flutter Native 3.x';
+
+      htmlContent = `
+        <div style="font-family: Arial, sans-serif; max-width: 620px; margin: 0 auto; background: #0f172a; color: #f8fafc; padding: 28px; border-radius: 18px; border: 1px solid #334155; box-shadow: 0 10px 25px rgba(0,0,0,0.5);">
+          <div style="border-bottom: 1px solid #334155; padding-bottom: 20px; margin-bottom: 22px; text-align: center;">
+            <h2 style="color: #38bdf8; margin: 0; font-size: 26px; font-weight: 800;">Web2App Studio</h2>
+            <span style="color: #94a3b8; font-size: 13px;">Notifikasi Kompilasi & Build Selesai</span>
+          </div>
+          
+          <p style="font-size: 16px; line-height: 1.6; color: #f1f5f9;">Halo <strong>${name}</strong>,</p>
+          
+          <p style="font-size: 14px; line-height: 1.7; color: #cbd5e1;">
+            <strong>Selamat!</strong> Kompilasi proyek aplikasi mobile Anda telah <strong style="color: #38bdf8;">BERHASIL SELESAI</strong> diproses oleh server Web2App Native Engine.
+          </p>
+
+          <div style="background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%); padding: 22px; border-radius: 14px; margin: 24px 0; border: 1px solid #38bdf8;">
+            <h3 style="margin-top: 0; color: #38bdf8; font-size: 16px; border-bottom: 1px solid #334155; padding-bottom: 10px;">📦 Spesifikasi Aplikasi:</h3>
+            <ul style="margin: 0; padding-left: 20px; font-size: 13px; color: #e2e8f0; line-height: 1.8;">
+              <li><strong>Nama Aplikasi:</strong> ${targetApp}</li>
+              <li><strong>Package Name:</strong> <code style="color: #38bdf8;">${targetPkg}</code></li>
+              <li><strong>Native Engine:</strong> ${targetEngine}</li>
+              <li><strong>Status Build:</strong> <span style="color: #4ade80; font-weight: bold;">Signed Release Binary Ready</span></li>
+              <li><strong>Keamanan Data:</strong> Bebas Iklan & Enkripsi Relational Vault</li>
+            </ul>
+          </div>
+
+          <p style="font-size: 13px; line-height: 1.6; color: #94a3b8;">
+            Terima kasih telah menggunakan Web2App Studio untuk mengubah website Anda menjadi aplikasi native berkualitas tinggi. Anda dapat langsung mengunduh file installer APK di dasbor aplikasi.
+          </p>
+
+          <div style="border-top: 1px solid #334155; padding-top: 18px; margin-top: 28px; text-align: center; font-size: 12px; color: #64748b;">
+            <p style="margin: 0;">© 2026 Web2App Studio by joo.exe. Seluruh Hak Cipta Dilindungi.</p>
+          </div>
+        </div>
+      `;
+    } else if (templateType === 'welcome') {
+      htmlContent = `
+        <div style="font-family: Arial, sans-serif; max-width: 620px; margin: 0 auto; background: #0f172a; color: #f8fafc; padding: 28px; border-radius: 18px; border: 1px solid #334155; box-shadow: 0 10px 25px rgba(0,0,0,0.5);">
+          <div style="border-bottom: 1px solid #334155; padding-bottom: 20px; margin-bottom: 22px; text-align: center;">
+            <h2 style="color: #38bdf8; margin: 0; font-size: 26px; font-weight: 800;">Web2App Studio</h2>
             <span style="color: #94a3b8; font-size: 13px;">Platform Kompilasi Website ke Aplikasi Native Mobile & Desktop</span>
           </div>
           
           <p style="font-size: 16px; line-height: 1.6; color: #f1f5f9;">Halo <strong>${name}</strong>,</p>
           
           <p style="font-size: 14px; line-height: 1.7; color: #cbd5e1;">
-            <strong>Terima kasih banyak telah mempercayai layanan kami di Web2App Studio!</strong> Kami sangat berterima kasih atas dukungan dan kepercayaan Anda untuk menggunakan platform converter & builder aplikasi native kami.
+            <strong>Terima kasih banyak telah bergabung dan mempercayai Web2App Studio!</strong> Kami mengucapkan selamat datang dan berterima kasih atas apresiasi Anda menggunakan platform pengembang aplikasi kami.
           </p>
 
-          <div style="background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%); padding: 20px; border-radius: 14px; margin: 24px 0; border: 1px solid #38bdf8;">
-            <h3 style="margin-top: 0; color: #38bdf8; font-size: 15px;">🎉 Fasilitas & Fitur Akun Anda:</h3>
+          <div style="background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%); padding: 22px; border-radius: 14px; margin: 24px 0; border: 1px solid #38bdf8;">
+            <h3 style="margin-top: 0; color: #38bdf8; font-size: 16px; border-bottom: 1px solid #334155; padding-bottom: 10px;">🎉 Fasilitas Istimewa Akun Anda:</h3>
             <ul style="margin: 0; padding-left: 20px; font-size: 13px; color: #e2e8f0; line-height: 1.8;">
-              <li><strong>10 Token Build Gratis:</strong> Siap digunakan untuk kompilasi APK / PWA instan.</li>
-              <li><strong>Multi-Engine Support:</strong> PWA, Flutter 3.x, Kotlin Jetpack Compose, iOS Swift, KMP & Electron.</li>
-              <li><strong>Branding & Customization:</strong> Unggah Logo App, Splash Screen, CSS & JS Custom Injections.</li>
-              <li><strong>Relational SQL Vault:</strong> Dilindungi enkripsi militer AES-256-GCM.</li>
+              <li><strong>Bonus 10 Token Build Gratis:</strong> Siap dipakai untuk kompilasi aplikasi pertama Anda.</li>
+              <li><strong>Dukungan Multi-Engine:</strong> PWA, Flutter 3.x, Kotlin Jetpack Compose, iOS Swift, KMP & Electron.</li>
+              <li><strong>Custom Branding & Logo:</strong> Bebas memasukkan Icon App PNG custom, Splash Screen & CSS.</li>
+              <li><strong>Relational SQL Vault Server:</strong> Penyimpanan konfigurasi terenkripsi militer AES-256-GCM.</li>
             </ul>
           </div>
 
           <p style="font-size: 13px; line-height: 1.6; color: #94a3b8;">
-            Jika Anda memiliki pertanyaan, saran, atau butuh bantuan dalam kompilasi aplikasi, tim support kami siap membantu Anda kapan saja.
+            Jika Anda membutuhkan bantuan, masukan, atau konsultasi seputar kompilasi aplikasi, tim kami siap melayani Anda.
           </p>
 
           <div style="border-top: 1px solid #334155; padding-top: 18px; margin-top: 28px; text-align: center; font-size: 12px; color: #64748b;">
@@ -941,7 +1183,7 @@ app.post("/api/send-email", async (req, res) => {
           </div>
           <p style="font-size: 15px; line-height: 1.6; color: #f1f5f9;">Halo <strong>${name}</strong>,</p>
           <p style="font-size: 14px; line-height: 1.6; color: #cbd5e1;">
-            Kami menerima permintaan untuk meriset kata sandi akun Web2App Studio Anda (${to}). Silakan periksa pesan verifikasi resmi Firebase Auth yang dikirimkan bersamaan dengan email ini untuk memperbarui kata sandi Anda secara aman.
+            Kami menerima permintaan untuk meriset kata sandi akun Web2App Studio Anda (${to}). Silakan periksa pesan verifikasi resmi yang dikirimkan ke email ini untuk memperbarui kata sandi Anda secara aman.
           </p>
           <div style="border-top: 1px solid #334155; padding-top: 18px; margin-top: 28px; text-align: center; font-size: 12px; color: #64748b;">
             <p style="margin: 0;">© 2026 Web2App Studio. Jika Anda tidak meminta riset kata sandi, abaikan email ini.</p>
@@ -950,18 +1192,21 @@ app.post("/api/send-email", async (req, res) => {
       `;
     } else {
       htmlContent = `
-        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; background: #0f172a; color: #f8fafc; padding: 24px; border-radius: 16px;">
-          <div style="border-bottom: 1px solid #334155; padding-bottom: 16px; margin-bottom: 20px;">
-            <h2 style="color: #38bdf8; margin: 0; font-size: 20px;">Web2App Studio</h2>
-            <span style="color: #94a3b8; font-size: 12px;">by joo.exe</span>
+        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; background: #0f172a; color: #f8fafc; padding: 26px; border-radius: 16px; border: 1px solid #334155;">
+          <div style="border-bottom: 1px solid #334155; padding-bottom: 18px; margin-bottom: 20px;">
+            <h2 style="color: #38bdf8; margin: 0; font-size: 22px; font-weight: 800;">Web2App Studio</h2>
+            <span style="color: #94a3b8; font-size: 12px;">Pengumuman & Pemberitahuan Resmi</span>
           </div>
           <p style="font-size: 15px; line-height: 1.6; color: #e2e8f0;">Halo <strong>${name}</strong>,</p>
-          <p style="font-size: 14px; line-height: 1.6; color: #cbd5e1;">${customMessage || 'Terima kasih telah menggunakan layanan platform Web2App Studio.'}</p>
-          <div style="background: #1e293b; padding: 16px; border-radius: 12px; margin: 20px 0; border: 1px solid #334155;">
-            <p style="margin: 0; font-size: 13px; color: #38bdf8;"><strong>Status Layanan:</strong> Online & Active</p>
+          <p style="font-size: 14px; line-height: 1.6; color: #cbd5e1;">${customMessage || 'Terima kasih banyak telah menjadi bagian dari pengguna setia layanan platform Web2App Studio.'}</p>
+          <div style="background: #1e293b; padding: 18px; border-radius: 12px; margin: 20px 0; border: 1px solid #334155;">
+            <p style="margin: 0; font-size: 13px; color: #38bdf8;"><strong>Status Layanan Web2App:</strong> Online, Active & Secure</p>
           </div>
+          <p style="font-size: 13px; line-height: 1.6; color: #94a3b8;">
+            Terima kasih atas perhatian dan dukungan Anda yang luar biasa.
+          </p>
           <div style="border-top: 1px solid #334155; padding-top: 16px; margin-top: 24px; text-align: center; font-size: 11px; color: #64748b;">
-            <p>© 2026 Web2App Studio by joo.exe. Email otomatis sistem.</p>
+            <p>© 2026 Web2App Studio by joo.exe. Seluruh Hak Cipta Dilindungi.</p>
           </div>
         </div>
       `;
@@ -977,7 +1222,7 @@ app.post("/api/send-email", async (req, res) => {
             "Content-Type": "application/json"
           },
           body: JSON.stringify({
-            from: "Web2App Studio <onboarding@resend.dev>",
+            from: fromAddress,
             to: [to],
             subject: emailSubject,
             html: htmlContent
@@ -986,19 +1231,32 @@ app.post("/api/send-email", async (req, res) => {
 
         const resendData = await resendRes.json();
         if (resendRes.ok) {
+          console.log(`[Resend Email Success] Email sent to ${to}. Resend ID: ${resendData.id}`);
           return res.json({
             success: true,
             mode: "real",
             message: `Email "${emailSubject}" berhasil dikirimkan ke inbox ${to}!`,
             resendId: resendData.id
           });
+        } else {
+          console.warn("[Resend API Error]", resendData);
+          return res.json({
+            success: false,
+            error: resendData.message || resendData.name || `Resend API Error (HTTP ${resendRes.status})`,
+            details: resendData,
+            note: "Catatan Resend: Pada akun gratis (onboarding@resend.dev), Resend hanya mengizinkan pengiriman email ke alamat email yang terdaftar pada akun Resend Anda, atau membutuhkan domain terverifikasi."
+          });
         }
-      } catch (err) {
-        console.warn("Resend API delivery error, falling back to simulated status:", err);
+      } catch (err: any) {
+        console.warn("Resend API delivery exception:", err);
+        return res.status(500).json({
+          success: false,
+          error: `Gagal terhubung ke server Resend: ${err?.message || 'Error koneksi'}`
+        });
       }
     }
 
-    // Default: Return successful simulated response payload
+    // Default fallback when RESEND_API_KEY is not configured
     return res.json({
       success: true,
       mode: "simulated",
@@ -1007,7 +1265,7 @@ app.post("/api/send-email", async (req, res) => {
       recipient: { email: to, name },
       templateType: templateType || 'general',
       subject: emailSubject,
-      note: "Untuk pengiriman nyata ke inbox pengguna, tambahkan RESEND_API_KEY di .env.example."
+      note: "Untuk pengiriman email nyata ke inbox pengguna, pastikan RESEND_API_KEY sudah diisi dengan benar di pengaturan / .env.example."
     });
 
   } catch (error: any) {

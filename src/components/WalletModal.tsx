@@ -27,6 +27,7 @@ import {
   getUserTransactions,
   isAdminUser
 } from '../lib/firebase';
+import { triggerEmailEvent } from '../lib/emailService';
 
 interface WalletModalProps {
   isOpen: boolean;
@@ -222,6 +223,20 @@ export const WalletModal: React.FC<WalletModalProps> = ({
 
       if (data.status === 'SUCCESS') {
         await topUpBalance(currentUser.uid, checkoutData.amount, checkoutData.method === 'qris' ? 'BuatQRIS Dynamic QRIS' : 'Bank Jago Direct');
+
+        // Dispatch official thank you email with complete transaction details
+        if (currentUser.email) {
+          triggerEmailEvent({
+            to: currentUser.email,
+            recipientName: currentUser.displayName || currentUser.email.split('@')[0],
+            templateType: 'topup_success',
+            subject: `[Resi Pembayaran] Terima Kasih Top-Up Saldo Rp ${checkoutData.amount.toLocaleString('id-ID')} - Web2App Studio`,
+            amount: checkoutData.amount,
+            tokensGranted: checkoutData.tokensGranted || Math.floor(checkoutData.amount / 1000),
+            invoiceId: checkoutData.trxId,
+            customMessage: `Top-Up saldo deposit sebesar Rp ${checkoutData.amount.toLocaleString('id-ID')} via ${checkoutData.method === 'qris' ? 'BuatQRIS Dynamic QRIS' : 'Bank Jago'} telah berhasil diproses.`
+          });
+        }
 
         setSuccessMsg(`Pembayaran Berhasil Terverifikasi! Saldo Deposit +Rp ${checkoutData.amount.toLocaleString('id-ID')} telah otomatis masuk ke akun Anda.`);
         setCustomTopUp('');

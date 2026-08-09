@@ -200,8 +200,8 @@ export default function App() {
             displayName: user.displayName || (isAdmin ? 'Developer VIP Admin' : 'User'),
             photoURL: user.photoURL || null,
             providerId: 'password',
-            balance: isAdmin ? 999999999 : 0,
-            tokens: isAdmin ? 999999 : 10,
+            balance: isAdmin ? 100000 : 0,
+            tokens: isAdmin ? 50000 : 10,
             subscriptionPlan: isAdmin ? 'Enterprise' : 'Free',
             subscriptionExpiry: isAdmin ? '2099-12-31T23:59:59.000Z' : null,
             lastLogin: new Date().toISOString(),
@@ -502,7 +502,7 @@ export default function App() {
         isNewUser={welcomeModalState?.isNewUser ?? false}
         userName={currentUser?.displayName || userProfile?.displayName || currentUser?.email?.split('@')[0] || 'Developer'}
         userEmail={currentUser?.email || userProfile?.email}
-        tokens={isAdminUser(currentUser?.email || '') ? 999999 : (userProfile?.tokens ?? 0)}
+        tokens={isAdminUser(currentUser?.email || '') ? 50000 : (userProfile?.tokens ?? 0)}
         subscriptionPlan={userProfile?.subscriptionPlan || (isAdminUser(currentUser?.email || '') ? 'Enterprise' : 'Free')}
         activeAppName={config.appName}
         engineType={config.engineType}

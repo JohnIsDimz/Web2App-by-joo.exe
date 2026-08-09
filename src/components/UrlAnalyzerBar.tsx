@@ -19,6 +19,11 @@ export const UrlAnalyzerBar: React.FC<UrlAnalyzerBarProps> = ({
 }) => {
   const [inputUrl, setInputUrl] = useState(config.url);
 
+  // Keep input field updated when config.url changes from presets or saved apps
+  React.useEffect(() => {
+    setInputUrl(config.url);
+  }, [config.url]);
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!inputUrl) return;

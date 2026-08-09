@@ -265,7 +265,7 @@ export const Configurator: React.FC<ConfiguratorProps> = ({
               <div>
                 <label className="text-xs font-bold text-sky-400 flex items-center gap-1.5">
                   <ImageIcon className="w-4 h-4 text-sky-400" />
-                  <span>Icon App Custom (Support Gambar PNG / JPG / SVG / WebP)</span>
+                  <span>Icon App Custom</span>
                 </label>
                 <p className="text-[11px] text-slate-400 mt-0.5">
                   Unggah file gambar logo dari perangkat Anda atau masukkan link URL gambar PNG untuk diterapkan sebagai icon aplikasi native.
@@ -287,14 +287,14 @@ export const Configurator: React.FC<ConfiguratorProps> = ({
                       className="w-full h-full object-cover"
                     />
                   ) : (
-                    <span className="text-2xl">{config.iconEmoji || ' App'}</span>
+                    <span className="text-2xl">📱</span>
                   )}
                 </div>
 
                 <div>
                   <span className="text-xs font-bold text-white block">Preview Icon</span>
                   <span className="text-[10px] text-slate-400 block font-mono">
-                    {config.iconUrl ? 'PNG Custom Aktif' : `Emoji: ${config.iconEmoji}`}
+                    {config.iconUrl ? 'PNG Custom Aktif' : 'Icon Default PNG'}
                   </span>
                 </div>
               </div>
@@ -898,18 +898,6 @@ export const Configurator: React.FC<ConfiguratorProps> = ({
                   className="flex-1 px-3 py-2 bg-slate-950 border border-slate-700 rounded-xl text-white font-mono text-xs"
                 />
               </div>
-            </div>
-
-            <div>
-              <label className="block text-xs font-semibold text-slate-300 mb-1.5">
-                Icon Emoji App
-              </label>
-              <input
-                type="text"
-                value={config.iconEmoji}
-                onChange={(e) => onChangeConfig({ iconEmoji: e.target.value })}
-                className="w-full px-3.5 py-2 bg-slate-950 border border-slate-700 rounded-xl text-white text-center text-xl"
-              />
             </div>
           </div>
 

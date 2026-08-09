@@ -63,45 +63,6 @@ export const Header: React.FC<HeaderProps> = ({
                   <span className="text-[10px] font-mono font-semibold px-1.5 py-0.5 rounded-full bg-sky-500/10 text-sky-400 border border-sky-500/20">
                     by joo.exe
                   </span>
-
-                  {/* Mobile & Header Auto-Save Indicator */}
-                  <button
-                    onClick={onForceSync}
-                    className={`flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[10px] font-mono font-medium transition-all cursor-pointer ${
-                      saveStatus === 'saving'
-                        ? 'bg-sky-500/10 text-sky-300 border border-sky-500/30'
-                        : saveStatus === 'error'
-                        ? 'bg-amber-500/10 text-amber-300 border border-amber-500/30'
-                        : isPulsing
-                        ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/50 shadow-sm shadow-emerald-500/20 scale-105'
-                        : 'bg-slate-800/80 text-emerald-400/90 border border-slate-700/60 hover:border-emerald-500/40'
-                    }`}
-                    title={saveStatus === 'saved' ? `Konfigurasi tersimpan di Database SQL Encrypted (${lastSavedTime || 'Auto-Saved'}). Klik untuk sync ulang.` : 'Status Auto-Save Database SQL'}
-                  >
-                    {saveStatus === 'saving' ? (
-                      <>
-                        <RefreshCw className="w-3 h-3 text-sky-400 animate-spin shrink-0" />
-                        <span>Syncing...</span>
-                      </>
-                    ) : saveStatus === 'error' ? (
-                      <>
-                        <AlertCircle className="w-3 h-3 text-amber-400 shrink-0" />
-                        <span>Sync Error</span>
-                      </>
-                    ) : (
-                      <>
-                        <span className="relative flex h-2 w-2 shrink-0">
-                          {isPulsing && (
-                            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
-                          )}
-                          <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-400"></span>
-                        </span>
-                        <Cloud className="w-3 h-3 text-emerald-400 shrink-0" />
-                        <span className="hidden xs:inline">Auto-Saved</span>
-                        {lastSavedTime && <span className="opacity-75 text-[9px] hidden sm:inline">({lastSavedTime})</span>}
-                      </>
-                    )}
-                  </button>
                 </div>
               </div>
             </div>
