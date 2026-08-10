@@ -200,16 +200,21 @@ sudo certbot --nginx -d domainanda.com -d www.domainanda.com
   ```bash
   htop
   ```
-* **Solusi Error Port 3000 Digunakan / `EADDRINUSE`:**
+* **Solusi Tampilan Website Putih Polos (Blank White Screen):**
   ```bash
-  # 1. Hentikan semua instance PM2 dan proses Node tua
-  pm2 delete all
-  sudo killall -9 node
-  
-  # 2. Jalankan ulang server dalam Mode Production
+  # 1. Masuk ke folder project
   cd /var/www/web2app
+
+  # 2. Re-build ulang assets frontend & backend server
+  npm run build
+
+  # 3. Restart PM2 dengan mode production & update env
+  pm2 delete all
   NODE_ENV=production pm2 start dist/server.cjs --name web2app
   pm2 save
+
+  # 4. Tes koneksi lokal di VPS (Harus merespon HTML):
+  curl http://localhost:3000
   ```
 * **Solusi Error APT Lock (`Could not get lock /var/lib/dpkg/lock`):**
   ```bash

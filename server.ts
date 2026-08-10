@@ -1357,7 +1357,7 @@ app.post("/api/sql-vault/query", (req, res) => {
 
 
 async function startServer() {
-  const isProduction = process.env.NODE_ENV === "production";
+  const isProduction = process.env.NODE_ENV === "production" || (typeof __filename !== "undefined" && __filename.endsWith("server.cjs"));
 
   // Vite middleware for development
   if (!isProduction) {
