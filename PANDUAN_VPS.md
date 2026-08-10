@@ -200,6 +200,11 @@ sudo certbot --nginx -d domainanda.com -d www.domainanda.com
   ```bash
   htop
   ```
+* **Solusi Error APT Lock (`Could not get lock /var/lib/dpkg/lock`):**
+  ```bash
+  sudo killall apt apt-get
+  sudo dpkg --configure -a
+  ```
 
 ---
 *Dibuat oleh **joo.exe** — Web2App Studio Native Engine*
