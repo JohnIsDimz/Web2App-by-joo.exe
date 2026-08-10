@@ -115,8 +115,8 @@ npm install
 # Build frontend React & backend bundler
 npm run build
 
-# Jalankan server secara permanen 24/7 menggunakan PM2
-pm2 start dist/server.cjs --name web2app
+# Jalankan server secara permanen 24/7 menggunakan PM2 dalam Mode Production
+NODE_ENV=production pm2 start dist/server.cjs --name web2app
 
 # Simpan konfigurasi PM2 agar otomatis hidup kembali saat VPS direstart
 pm2 save
@@ -199,6 +199,17 @@ sudo certbot --nginx -d domainanda.com -d www.domainanda.com
 * **Melihat Penggunaan RAM & CPU VPS:**
   ```bash
   htop
+  ```
+* **Solusi Error Port 3000 Digunakan / `EADDRINUSE`:**
+  ```bash
+  # 1. Hentikan semua instance PM2 dan proses Node tua
+  pm2 delete all
+  sudo killall -9 node
+  
+  # 2. Jalankan ulang server dalam Mode Production
+  cd /var/www/web2app
+  NODE_ENV=production pm2 start dist/server.cjs --name web2app
+  pm2 save
   ```
 * **Solusi Error APT Lock (`Could not get lock /var/lib/dpkg/lock`):**
   ```bash

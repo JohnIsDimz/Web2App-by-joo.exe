@@ -1357,8 +1357,10 @@ app.post("/api/sql-vault/query", (req, res) => {
 
 
 async function startServer() {
+  const isProduction = process.env.NODE_ENV === "production";
+
   // Vite middleware for development
-  if (process.env.NODE_ENV !== "production") {
+  if (!isProduction) {
     const vite = await createViteServer({
       server: { middlewareMode: true },
       appType: "spa",
