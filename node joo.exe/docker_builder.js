@@ -1,5 +1,5 @@
 // =========================================================
-// Pterodactyl Docker & Flutter Build Engine
+// VPS Native Docker & Flutter Build Engine
 // Developed by joo.exe
 // =========================================================
 
@@ -26,7 +26,7 @@ export async function inspectBuildEnvironment() {
           flutterVersion: hasFlutter ? flutterOut.split('\n')[0] : null,
           hasDocker,
           dockerVersion: hasDocker ? dockerOut.trim() : null,
-          preferredEngine: hasFlutter ? 'Local Flutter SDK' : hasDocker ? 'Docker Flutter Container' : 'Bundle Package Engine',
+          preferredEngine: hasFlutter ? 'Local Flutter SDK (VPS)' : hasDocker ? 'Docker Flutter Container' : 'Bundle Package Engine',
         });
       });
     });
@@ -42,7 +42,7 @@ export async function triggerApkBuildJob(jobId, config, projectDir) {
     appName: config.appName || 'Web2App',
     packageName: config.packageName || 'com.jooexe.app',
     status: 'building', // 'building' | 'completed' | 'failed'
-    logs: [`[1/5] Inisialisasi Pterodactyl Build Engine v2.0 oleh joo.exe...`],
+    logs: [`[1/5] Inisialisasi VPS Native Build Engine v2.0 oleh joo.exe...`],
     apkPath: null,
     startedAt: new Date().toISOString(),
   };
@@ -61,7 +61,7 @@ export async function triggerApkBuildJob(jobId, config, projectDir) {
   const targetApkFile = path.join(outputApkDir, `${cleanName}-${jobId}.apk`);
 
   if (envInfo.hasFlutter) {
-    // 1. Build using Local Flutter SDK if installed on Pterodactyl Container
+    // 1. Build using Local Flutter SDK installed on VPS
     jobState.logs.push(`[3/5] Jalankan kompilasi Flutter SDK lokal: 'flutter build apk --release'...`);
     
     exec(`cd "${projectDir}" && flutter pub get && flutter build apk --release`, (err, stdout, stderr) => {
@@ -88,7 +88,7 @@ export async function triggerApkBuildJob(jobId, config, projectDir) {
 
     exec(dockerCmd, (err, stdout, stderr) => {
       if (err) {
-        jobState.logs.push(`[4/5] PERINGATAN: Docker Container gagal/terbatasi di Pterodactyl: ${err.message}`);
+        jobState.logs.push(`[4/5] PERINGATAN: Docker Container gagal/terbatasi: ${err.message}`);
         fallbackToBundleApk(jobState, targetApkFile, config);
       } else {
         const generatedApk = path.join(projectDir, 'build', 'app', 'outputs', 'flutter-apk', 'app-release.apk');
@@ -105,7 +105,7 @@ export async function triggerApkBuildJob(jobId, config, projectDir) {
 
   } else {
     // 3. Fallback: Fast Standalone Package Generator
-    jobState.logs.push(`[3/5] Flutter SDK & Docker tidak tersedia di container ini. Menggunakan Fast Standalone Package Engine...`);
+    jobState.logs.push(`[3/5] Flutter SDK & Docker tidak tersedia. Menggunakan Fast Standalone Package Engine...`);
     setTimeout(() => {
       fallbackToBundleApk(jobState, targetApkFile, config);
     }, 2000);
@@ -120,7 +120,7 @@ function fallbackToBundleApk(jobState, targetApkFile, config) {
     const cleanName = appName.replace(/[^a-zA-Z0-9_-]/g, '_');
     const header = Buffer.from('504b0304140000000800', 'hex');
     const payload = Buffer.from(
-      `Pterodactyl Build Engine by joo.exe\nApp: ${appName}\nPackage: ${config.packageName || 'com.jooexe.app'}\nURL: ${config.url || ''}\nTimestamp: ${new Date().toISOString()}`
+      `VPS Native Build Engine by joo.exe\nApp: ${appName}\nPackage: ${config.packageName || 'com.jooexe.app'}\nURL: ${config.url || ''}\nTimestamp: ${new Date().toISOString()}`
     );
     const apkData = Buffer.concat([header, payload]);
     

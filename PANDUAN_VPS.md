@@ -112,6 +112,20 @@ cd /var/www/web2app
 # Install dependensi npm project
 npm install
 
+# Konfigurasi File Environment (.env)
+cp .env.example .env
+nano .env   # atau gunakan 'vim .env' / Termius File Editor
+```
+
+Isi `.env` dengan domain Anda dan API Key payment/email:
+```env
+APP_URL="https://web2appstudio.my.id"
+RESEND_API_KEY="" # Opsional untuk email
+BUATQRIS_ACCOUNT_ID="user_6a78b39d4f8481.*****"
+BUATQRIS_SECRET_TOKEN="sk_live_868626fa7613994c1fc10b812afc86cd119db324bb5afccee"
+```
+
+```bash
 # Build frontend React & backend bundler
 npm run build
 
@@ -176,6 +190,24 @@ sudo systemctl reload nginx
 ```bash
 sudo certbot --nginx -d domainanda.com -d www.domainanda.com
 ```
+
+---
+
+## 7. Langkah 7: Aktifkan Google Sign-In & Authorized Domains di Firebase Console
+
+Jika Anda menggunakan fitur **Google Login** di Web2App Studio, Anda wajib mengaktifkannya di Firebase Console:
+
+1. Buka **[Firebase Console](https://console.firebase.google.com)** dan pilih project Anda.
+2. Masuk ke menu **Authentication** di sidebar sebelah kiri.
+3. Klik tab **Sign-in method**:
+   * Jika provider **Google** belum ada, klik **Add new provider** -> Pilih **Google**.
+   * Aktifkan sakelar **Enable** di pojok kanan atas.
+   * Pilih **Project support email** (pilih email Google Anda).
+   * Klik **Save**.
+4. Masuk ke tab **Settings** (di sebelah tab Sign-in method):
+   * Scroll ke bawah ke bagian **Authorized domains**.
+   * Klik **Add domain** -> Masukkan domain Anda (contoh: `web2appstudio.my.id`).
+   * Klik **Save**.
 
 ---
 

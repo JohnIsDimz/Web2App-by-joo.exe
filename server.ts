@@ -16,7 +16,7 @@ app.use(express.json({ limit: "50mb" }));
 app.use(express.urlencoded({ limit: "50mb", extended: true }));
 
 // ---------------------------------------------------------
-// Rate Limiter Configurations for Pterodactyl Build Server Protection
+// Rate Limiter Configurations for VPS Build Server Protection
 // ---------------------------------------------------------
 const apiLimiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
@@ -32,13 +32,13 @@ const apiLimiter = rateLimit({
 
 const buildServerLimiter = rateLimit({
   windowMs: 10 * 60 * 1000, // 10 minutes
-  max: 15, // Limit build/proxy/analyze requests to protect Pterodactyl server resources
+  max: 15, // Limit build/proxy/analyze requests to protect VPS server resources
   standardHeaders: true,
   legacyHeaders: false,
   message: {
     status: 429,
-    error: "Pterodactyl Build Server Rate Limit Exceeded",
-    message: "Batas pemrosesan build server Pterodactyl terlampaui. Dibatasi untuk melindungi dari penyalahgunaan & menjamin kestabilan pengguna paid.",
+    error: "VPS Build Server Rate Limit Exceeded",
+    message: "Batas pemrosesan build server VPS terlampaui. Dibatasi untuk melindungi dari penyalahgunaan & menjamin kestabilan server.",
   },
 });
 
@@ -50,40 +50,13 @@ app.use("/api/analyze-url", buildServerLimiter);
 
 // API health endpoint
 app.get("/api/health", async (_req, res) => {
-  let pterodactylOnline = false;
-  let pterodactylMessage = "Server VPS Pterodactyl belum diaktifkan";
-
-  const pterodactylUrl = process.env.PTERODACTYL_SERVER_URL;
-  const pterodactylActive = process.env.PTERODACTYL_ACTIVE === "true";
-
-  if (pterodactylActive && pterodactylUrl) {
-    try {
-      const controller = new AbortController();
-      const timeout = setTimeout(() => controller.abort(), 3000);
-      const pRes = await fetch(`${pterodactylUrl.replace(/\/$/, '')}/api/health`, {
-        signal: controller.signal
-      });
-      clearTimeout(timeout);
-      if (pRes.ok) {
-        pterodactylOnline = true;
-        pterodactylMessage = "VPS Pterodactyl Active & Online";
-      } else {
-        pterodactylMessage = `VPS Pterodactyl tidak merespon (HTTP ${pRes.status})`;
-      }
-    } catch {
-      pterodactylMessage = "Tidak dapat terhubung ke VPS Pterodactyl";
-    }
-  } else if (pterodactylActive) {
-    // If running directly on the Pterodactyl container itself
-    pterodactylOnline = true;
-    pterodactylMessage = "Running directly on Pterodactyl Node";
-  }
-
   res.json({
     status: "ok",
     webApp: "online",
-    pterodactylOnline,
-    pterodactylMessage,
+    vpsOnline: true,
+    vpsMessage: "Server VPS Standalone Active & Online",
+    pterodactylOnline: true, // backward compatibility
+    pterodactylMessage: "VPS Standalone Server Active & Online",
     name: "Web2App by joo.exe",
     engine: "Flutter 3.x"
   });

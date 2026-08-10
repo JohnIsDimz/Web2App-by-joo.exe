@@ -104,20 +104,22 @@ export async function signInWithGoogle(): Promise<{ user: User; isNewUser: boole
     return { user, isNewUser };
   } catch (error: any) {
     console.error("Google Sign-In Error:", error);
-    if (error.code === 'auth/api-key-not-valid' || error.message?.includes('api-key-not-valid') || error.message?.includes('API key') || error.code === 'auth/operation-not-allowed') {
-      throw new Error("Google Login memerlukan pengaktifan Google Sign-In Provider di Firebase Console project baru Anda. Silakan daftar/masuk dengan Email & Kata Sandi di atas.");
-    }
-    if (error.code === 'auth/popup-closed-by-user') {
-      throw new Error("Popup Google Login ditutup oleh pengguna sebelum proses selesai. Silakan coba lagi atau gunakan Email & Kata Sandi di atas.");
-    }
-    if (error.code === 'auth/popup-blocked' || error.code === 'auth/cancelled-popup-request') {
-      throw new Error("Popup Google Login ditutup/terblokir oleh browser. Silakan izinkan popup atau gunakan Email & Kata Sandi di atas.");
+    const currentHost = typeof window !== 'undefined' ? window.location.hostname : '';
+    
+    if (error.code === 'auth/operation-not-allowed' || error.message?.includes('operation-not-allowed')) {
+      throw new Error("Metode Google Sign-In belum diaktifkan di Firebase Console. Buka Firebase Console -> Authentication -> Sign-in method -> Tambahkan Provider Google, atau gunakan Email & Kata Sandi di atas.");
     }
     if (error.code === 'auth/unauthorized-domain') {
-      const currentHost = typeof window !== 'undefined' ? window.location.hostname : '';
-      throw new Error(`Domain "${currentHost}" belum ditambahkan di Authorized Domains Firebase Console. Silakan tambahkan domain ini di Firebase Console -> Authentication -> Settings -> Authorized Domains, atau masuk menggunakan Email & Kata Sandi.`);
+      throw new Error(`Domain "${currentHost}" belum terdaftar di Authorized Domains Firebase Console. Tambahkan domain ini di Firebase Console -> Authentication -> Settings -> Authorized Domains, atau gunakan Email & Kata Sandi di atas.`);
     }
-    throw new Error("Google Login belum dapat digunakan pada project Firebase ini. Silakan masuk menggunakan Email & Kata Sandi di atas.");
+    if (error.code === 'auth/popup-closed-by-user') {
+      throw new Error("Popup Google Login ditutup oleh pengguna sebelum selesai. Silakan coba lagi atau masuk dengan Email & Kata Sandi.");
+    }
+    if (error.code === 'auth/popup-blocked' || error.code === 'auth/cancelled-popup-request') {
+      throw new Error("Popup Google Login terblokir oleh browser. Izinkan popup untuk situs ini atau masuk dengan Email & Kata Sandi.");
+    }
+    
+    throw new Error(`Google Login belum diaktifkan di project Firebase ini atau domain "${currentHost}" belum diizinkan. Silakan aktifkan di Firebase Console, atau buat akun baru di tab "Daftar Akun Baru" menggunakan Email & Kata Sandi.`);
   }
 }
 

@@ -19,21 +19,19 @@ ISI FILE & FUNGSI:
    - Jika Flutter SDK terinstall di VPS, proses build APK berjalan 100%
      native di server tanpa membutuhkan API eksternal.
 
-3. pterodactyl.js / vps_runner.js
-   - Server backend Express standalone yang dapat dijalankan di VPS
-     maupun Pterodactyl Container Wings.
+3. vps_runner.js
+   - Server backend Express standalone yang berjalan 100% di VPS Anda.
 
 CARA RUNNING DI VPS SINGAPURA/INDONESIA (SINGLE VPS SETUP):
 ----------------------------------------------------------
-1. Upload folder project ke VPS (misal di /var/www/web2app).
+1. Upload/clone folder project ke VPS (misal di /var/www/web2app).
 2. Jalankan setup VPS:
-   chmod +x "/node joo.exe/setup_vps.sh"
-   ./"node joo.exe/setup_vps.sh"
+   chmod +x setup_vps.sh && ./setup_vps.sh
 
 3. Build & Jalankan Aplikasi:
    npm install
    npm run build
-   pm2 start dist/server.cjs --name web2app
+   NODE_ENV=production pm2 start dist/server.cjs --name web2app
    pm2 save
 
 4. Hubungkan Domain & SSL Gratis:
