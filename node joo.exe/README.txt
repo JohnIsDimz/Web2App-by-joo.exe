@@ -1,20 +1,43 @@
-=========================================================
-      WEB2APP STUDIO - PTERODACTYL SERVER SETUP
-              Engine oleh joo.exe
-=========================================================
+=================================================================
+WEB2APP NATIVE ENGINE & SINGLE VPS DEPLOYMENT KIT BY joo.exe
+=================================================================
 
-Petunjuk Menjalankan Web2App Studio di Panel Pterodactyl:
+Direktori ini berisi modul server dan script otomatisasi untuk
+menjalankan Web2App Studio & Flutter APK Build Engine secara terpusat
+di 1 Server VPS (Ubuntu / Debian / Linux).
 
-1. Upload seluruh file proyek ini ke dalam File Manager di Pterodactyl.
-2. Di bagian "Startup" atau "Startup Command" di Panel Pterodactyl, gunakan salah satu perintah berikut:
+ISI FILE & FUNGSI:
+------------------
+1. setup_vps.sh
+   - Script instalasi otomatis 1-Click untuk VPS Ubuntu/Debian.
+   - Menginstall Node.js 20, PM2, Nginx, Java JDK 17, Flutter SDK,
+     Docker, dan Certbot SSL secara instan.
 
-   Pilihan A (Rekomendasi - Menggunakan script otomatis):
-   npm run start:pterodactyl
+2. docker_builder.js
+   - Modul kompilasi otomatis Flutter & Android APK Native.
+   - Secara otomatis mendeteksi ketersediaan Flutter SDK / Docker di VPS.
+   - Jika Flutter SDK terinstall di VPS, proses build APK berjalan 100%
+     native di server tanpa membutuhkan API eksternal.
 
-   Pilihan B (Langsung menjalankan entrypoint joo.exe):
-   node "node joo.exe/pterodactyl.js"
+3. pterodactyl.js / vps_runner.js
+   - Server backend Express standalone yang dapat dijalankan di VPS
+     maupun Pterodactyl Container Wings.
 
-3. Port server akan otomatis terdeteksi dari variabel {{SERVER_PORT}} yang diberikan oleh Panel Pterodactyl.
-4. Jika server Pterodactyl Anda mendukung Docker atau memiliki Flutter SDK, sistem akan otomatis mengompilasi APK real-time ketika ada permintaan build dari pengguna.
+CARA RUNNING DI VPS SINGAPURA/INDONESIA (SINGLE VPS SETUP):
+----------------------------------------------------------
+1. Upload folder project ke VPS (misal di /var/www/web2app).
+2. Jalankan setup VPS:
+   chmod +x "/node joo.exe/setup_vps.sh"
+   ./"node joo.exe/setup_vps.sh"
 
-=========================================================
+3. Build & Jalankan Aplikasi:
+   npm install
+   npm run build
+   pm2 start dist/server.cjs --name web2app
+   pm2 save
+
+4. Hubungkan Domain & SSL Gratis:
+   Gunakan Panduan di `PANDUAN_VPS.md` di root folder.
+
+Salam Cerdas,
+joo.exe - Web2App Developer

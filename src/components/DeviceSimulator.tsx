@@ -67,6 +67,13 @@ export const DeviceSimulator: React.FC<DeviceSimulatorProps> = ({
     window.location.hostname.includes('github.io')
   );
 
+  const [iframeError, setIframeError] = useState(false);
+
+  // Reset iframe error state when target URL changes
+  useEffect(() => {
+    setIframeError(false);
+  }, [config.url, useProxyViewer]);
+
   const targetSiteUrl = config.url || 'https://shopee.co.id';
 
   const previewUrl = (useProxyViewer && !isStaticEdgeHost)
@@ -172,11 +179,11 @@ export const DeviceSimulator: React.FC<DeviceSimulatorProps> = ({
             title="Toggle Live Web Proxy (Bypasses Frame-Blocking)"
             className={`px-2.5 py-1.5 rounded-xl text-xs font-semibold border transition-all flex items-center gap-1 ${
               useProxyViewer
-                ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/40'
-                : 'bg-slate-800 text-slate-300 border-slate-700 hover:text-white'
+                ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/40 hover:bg-emerald-500/30'
+                : 'bg-rose-500/20 text-rose-300 border-rose-500/40 hover:bg-rose-500/30'
             }`}
           >
-            <Globe className="w-3.5 h-3.5 text-emerald-400" />
+            <Globe className={`w-3.5 h-3.5 ${useProxyViewer ? 'text-emerald-400' : 'text-rose-400'}`} />
             <span>{useProxyViewer ? 'Proxy' : 'Direct'}</span>
           </button>
 
@@ -321,7 +328,41 @@ export const DeviceSimulator: React.FC<DeviceSimulatorProps> = ({
                   title="Flutter Live Mobile Preview"
                   className="w-full h-full border-none"
                   sandbox="allow-scripts allow-same-origin allow-forms allow-popups"
+                  onError={() => setIframeError(true)}
                 />
+
+                {/* X-Frame-Options / Frame-Blocking Guidance Overlay */}
+                {iframeError && (
+                  <div className="absolute inset-0 z-20 bg-slate-950/95 p-6 flex flex-col items-center justify-center text-center text-white">
+                    <div className="w-12 h-12 rounded-2xl bg-amber-500/20 text-amber-400 flex items-center justify-center text-xl mb-3 border border-amber-500/30">
+                      🛡️
+                    </div>
+                    <h3 className="font-bold text-sm text-white mb-1">
+                      Website Memblokir Pratinjau iFrame
+                    </h3>
+                    <p className="text-[11px] text-slate-300 max-w-[260px] leading-relaxed mb-4">
+                      Situs seperti <strong>{new URL(targetSiteUrl).hostname}</strong> memasang proteksi keamanan <code className="bg-slate-800 px-1 rounded text-sky-300">X-Frame-Options</code> pada browser Web Simulator.
+                    </p>
+
+                    <div className="bg-slate-900 border border-slate-800 p-2.5 rounded-xl text-[10px] text-slate-400 text-left mb-4 w-full max-w-[260px]">
+                      <strong className="text-emerald-400 block mb-0.5">✅ Kepastian Hasil APK Flutter:</strong>
+                      Aplikasi Android APK Native hasil ekspor akan memuat situs ini 100% lancar tanpa halangan.
+                    </div>
+
+                    {!useProxyViewer && !isStaticEdgeHost && (
+                      <button
+                        onClick={() => {
+                          setUseProxyViewer(true);
+                          setIframeError(false);
+                          handleRefreshIframe();
+                        }}
+                        className="px-4 py-2 rounded-xl text-xs font-bold bg-sky-500 hover:bg-sky-400 text-slate-950 shadow-lg transition-all active:scale-95"
+                      >
+                        ⚡ Aktifkan Mode Proxy Web2App
+                      </button>
+                    )}
+                  </div>
+                )}
 
                 {/* Floating Action Button Simulator Overlay */}
                 {config.enableFloatingButton && (
