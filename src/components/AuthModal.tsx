@@ -17,8 +17,17 @@ import {
   Mail,
   ArrowLeft
 } from 'lucide-react';
-import { User, signInWithEmailAndPassword, createUserWithEmailAndPassword, sendPasswordResetEmail } from 'firebase/auth';
-import { auth, signInWithGoogle, signOutUser, saveUserProfile, UserProfileData } from '../lib/firebase';
+import { User } from 'firebase/auth';
+import { 
+  auth, 
+  signInWithGoogle, 
+  loginWithEmail, 
+  registerWithEmail, 
+  resetUserPassword, 
+  signOutUser, 
+  saveUserProfile, 
+  UserProfileData 
+} from '../lib/firebase';
 import { triggerEmailEvent } from '../lib/emailService';
 
 interface AuthModalProps {
@@ -26,7 +35,6 @@ interface AuthModalProps {
   onClose: () => void;
   currentUser: User | null;
   userProfile?: UserProfileData | null;
-  onSelectDemoUser?: () => void;
   onLoginSuccess?: (isNewUser: boolean) => void;
   onOpenWelcomeModal?: () => void;
 }
@@ -99,8 +107,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
     setSuccessMsg(null);
 
     try {
-      // Fire Firebase reset password email
-      await sendPasswordResetEmail(auth, email).catch((err) => console.warn('Firebase reset email note:', err));
+      await resetUserPassword(email);
       
       // Dispatch background cloud email trigger silently
       triggerEmailEvent({
@@ -136,16 +143,14 @@ export const AuthModal: React.FC<AuthModalProps> = ({
       let targetUser: User | null = null;
 
       if (isRegisterMode) {
-        const userCred = await createUserWithEmailAndPassword(auth, email, password);
-        targetUser = userCred.user;
-        const res = await saveUserProfile(userCred.user);
-        isNew = (res as any)?.isNewUser ?? true;
+        const res = await registerWithEmail(email, password);
+        targetUser = res.user;
+        isNew = res.isNewUser;
         setSuccessMsg('Akun berhasil dibuat!');
       } else {
-        const userCred = await signInWithEmailAndPassword(auth, email, password);
-        targetUser = userCred.user;
-        const res = await saveUserProfile(userCred.user);
-        isNew = (res as any)?.isNewUser ?? false;
+        const res = await loginWithEmail(email, password);
+        targetUser = res.user;
+        isNew = res.isNewUser;
         setSuccessMsg('Berhasil masuk ke akun Anda!');
       }
 
@@ -165,15 +170,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
       onClose();
     } catch (err: any) {
       console.error(err);
-      if (err.code === 'auth/wrong-password' || err.code === 'auth/user-not-found' || err.code === 'auth/invalid-credential') {
-        setErrorMsg('Email atau kata sandi tidak sesuai.');
-      } else if (err.code === 'auth/email-already-in-use') {
-        setErrorMsg('Email sudah terdaftar. Silakan pilih opsi Masuk.');
-      } else if (err.code === 'auth/weak-password') {
-        setErrorMsg('Kata sandi terlalu pendek (minimal 6 karakter).');
-      } else {
-        setErrorMsg(err.message || 'Gagal autentikasi.');
-      }
+      setErrorMsg(err.message || 'Gagal autentikasi.');
     } finally {
       setLoading(false);
     }

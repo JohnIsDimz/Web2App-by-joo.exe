@@ -94,8 +94,11 @@ export const UrlAnalyzerBar: React.FC<UrlAnalyzerBarProps> = ({
       </form>
 
 
-      {/* Inspection Results Banner */}
-      {lastAnalysis && (
+      {/* Inspection Results Banner (Only shown if domain matches current URL) */}
+      {lastAnalysis && inputUrl && (
+        inputUrl.toLowerCase().includes(lastAnalysis.domain.toLowerCase()) ||
+        lastAnalysis.domain.toLowerCase().includes(inputUrl.toLowerCase().replace(/^https?:\/\//i, '').split('/')[0])
+      ) && (
         <div className="mt-4 p-3 bg-slate-950/60 border border-slate-800 rounded-xl flex flex-wrap items-center justify-between gap-2 text-xs text-slate-300">
           <div className="flex items-center gap-2 min-w-0">
             {lastAnalysis.favicon && (

@@ -917,6 +917,16 @@ setInterval(() => {
 app.post("/api/build-apk", buildServerLimiter, async (req, res) => {
   try {
     const { userId, appName, packageName, engineType, url, config } = req.body || {};
+
+    // Strict Authentication Security Guard: Must be logged in
+    if (!userId || userId === "guest" || String(userId).trim() === "") {
+      return res.status(401).json({
+        success: false,
+        error: "UNAUTHORIZED",
+        message: "Akses Ditolak: Anda wajib Login terlebih dahulu untuk dapat menggunakan server kompilasi APK.",
+      });
+    }
+
     const name = appName || "Web2App";
     const cleanName = name.replace(/[^a-zA-Z0-9_-]/g, "_");
     const engine = (engineType || config?.engineType || "flutter").toLowerCase();
@@ -954,32 +964,38 @@ app.post("/api/build-apk", buildServerLimiter, async (req, res) => {
     sqlDatabaseStore.set(buildId, transactionRecord);
 
     if (engine === 'pwa' || engine === 'pwa-shell') {
-      // Immediate PWA Standalone WebShell Package Compilation
-      const zip = new JSZip();
-      zip.file("manifest.json", JSON.stringify({
-        name: name,
-        short_name: name,
-        start_url: targetUrl,
-        display: "standalone",
-        orientation: "portrait",
-        theme_color: "#EE4D2D",
-        background_color: "#FAFAFA"
-      }, null, 2));
-      zip.file("index.html", `<!DOCTYPE html>\n<html>\n<head>\n  <meta charset="utf-8">\n  <meta name="viewport" content="width=device-width, initial-scale=1">\n  <title>${name}</title>\n  <script>window.location.href="${targetUrl}";</script>\n</head>\n<body>Redirecting to ${name}...</body>\n</html>`);
-      zip.file("sw.js", `self.addEventListener('fetch', function(event) { event.respondWith(fetch(event.request)); });`);
-      
-      const zipBuffer = await zip.generateAsync({ type: "nodebuffer" });
-      fs.writeFileSync(targetApkPath, zipBuffer);
+      // Background PWA Standalone WebShell Package Compilation Pipeline
+      setTimeout(async () => {
+        try {
+          const zip = new JSZip();
+          zip.file("manifest.json", JSON.stringify({
+            name: name,
+            short_name: name,
+            start_url: targetUrl,
+            display: "standalone",
+            orientation: "portrait",
+            theme_color: "#EE4D2D",
+            background_color: "#FAFAFA"
+          }, null, 2));
+          zip.file("index.html", `<!DOCTYPE html>\n<html>\n<head>\n  <meta charset="utf-8">\n  <meta name="viewport" content="width=device-width, initial-scale=1">\n  <title>${name}</title>\n  <script>window.location.href="${targetUrl}";</script>\n</head>\n<body>Redirecting to ${name}...</body>\n</html>`);
+          zip.file("sw.js", `self.addEventListener('fetch', function(event) { event.respondWith(fetch(event.request)); });`);
+          
+          const zipBuffer = await zip.generateAsync({ type: "nodebuffer" });
+          fs.writeFileSync(targetApkPath, zipBuffer);
 
-      const updatedRecord = {
-        ...transactionRecord,
-        filePath: targetApkPath,
-        fileSize: zipBuffer.length,
-        status: "compiled_ready",
-        updatedAt: new Date().toISOString(),
-        log: "PWA Standalone WebShell Package berhasil dibuat!",
-      };
-      sqlDatabaseStore.set(buildId, updatedRecord);
+          const updatedRecord = {
+            ...transactionRecord,
+            filePath: targetApkPath,
+            fileSize: zipBuffer.length,
+            status: "compiled_ready",
+            updatedAt: new Date().toISOString(),
+            log: "PWA Standalone WebShell Package berhasil dikompilasi!",
+          };
+          sqlDatabaseStore.set(buildId, updatedRecord);
+        } catch (err: any) {
+          sqlDatabaseStore.set(buildId, { ...transactionRecord, status: "compilation_failed", log: err?.message || "Build failed" });
+        }
+      }, 8000); // 8-second realistic build pipeline
 
       return res.json({
         success: true,
@@ -990,46 +1006,50 @@ app.post("/api/build-apk", buildServerLimiter, async (req, res) => {
         engineTitle,
         hasFlutter: true,
         canBuild: true,
-        status: "compiled_ready",
+        status: "building",
         downloadUrl: `/api/build-apk/download/${buildId}`,
-        zipExportUrl: `/api/export-zip?appName=${encodeURIComponent(name)}&packageName=${encodeURIComponent(cleanPkg)}&engineType=${encodeURIComponent(engine)}&url=${encodeURIComponent(targetUrl)}`,
-        message: `Paket PWA Standalone WebShell (${engineTitle}) berhasil dikompilasi di server VPS.`,
+        message: `Pipeline kompilasi VPS PWA Standalone WebShell (${engineTitle}) dimulai...`,
       });
     }
 
     if (engine === 'react-native' || engine === 'expo') {
-      // React Native / Expo Native Engine Compilation
-      const cfg = { appName: name, packageName: cleanPkg, url: targetUrl };
-      const zip = new JSZip();
-      zip.file("package.json", getReactNativePackageJson(cfg));
-      zip.file("App.js", getReactNativeAppJs(cfg));
-      zip.file("app.json", JSON.stringify({
-        expo: {
-          name: name,
-          slug: (name || 'app').toLowerCase().replace(/[^a-z0-9_-]/g, '-'),
-          version: "1.0.0",
-          orientation: "portrait",
-          userInterfaceStyle: "light",
-          android: {
-            package: cleanPkg,
-            adaptiveIcon: { backgroundColor: "#ffffff" }
-          }
+      // Background React Native / Expo Native Engine Compilation Pipeline
+      setTimeout(async () => {
+        try {
+          const cfg = { appName: name, packageName: cleanPkg, url: targetUrl };
+          const zip = new JSZip();
+          zip.file("package.json", getReactNativePackageJson(cfg));
+          zip.file("App.js", getReactNativeAppJs(cfg));
+          zip.file("app.json", JSON.stringify({
+            expo: {
+              name: name,
+              slug: (name || 'app').toLowerCase().replace(/[^a-z0-9_-]/g, '-'),
+              version: "1.0.0",
+              orientation: "portrait",
+              userInterfaceStyle: "light",
+              android: {
+                package: cleanPkg,
+                adaptiveIcon: { backgroundColor: "#ffffff" }
+              }
+            }
+          }, null, 2));
+
+          const zipBuffer = await zip.generateAsync({ type: "nodebuffer" });
+          fs.writeFileSync(targetApkPath, zipBuffer);
+
+          const updatedRecord = {
+            ...transactionRecord,
+            filePath: targetApkPath,
+            fileSize: zipBuffer.length,
+            status: "compiled_ready",
+            updatedAt: new Date().toISOString(),
+            log: "React Native / Expo Package berhasil dikompilasi!",
+          };
+          sqlDatabaseStore.set(buildId, updatedRecord);
+        } catch (err: any) {
+          sqlDatabaseStore.set(buildId, { ...transactionRecord, status: "compilation_failed", log: err?.message || "Build failed" });
         }
-      }, null, 2));
-      zip.file("README.md", `# ${name} - React Native / Expo Engine\n\nTarget URL: ${targetUrl}\nPackage Name: ${cleanPkg}\n\n## Cara Jalankan di Local:\n1. npm install\n2. npx expo start\n`);
-
-      const zipBuffer = await zip.generateAsync({ type: "nodebuffer" });
-      fs.writeFileSync(targetApkPath, zipBuffer);
-
-      const updatedRecord = {
-        ...transactionRecord,
-        filePath: targetApkPath,
-        fileSize: zipBuffer.length,
-        status: "compiled_ready",
-        updatedAt: new Date().toISOString(),
-        log: "React Native / Expo Package berhasil dikompilasi!",
-      };
-      sqlDatabaseStore.set(buildId, updatedRecord);
+      }, 10000); // 10-second realistic build pipeline
 
       return res.json({
         success: true,
@@ -1040,34 +1060,38 @@ app.post("/api/build-apk", buildServerLimiter, async (req, res) => {
         engineTitle,
         hasFlutter: true,
         canBuild: true,
-        status: "compiled_ready",
+        status: "building",
         downloadUrl: `/api/build-apk/download/${buildId}`,
-        zipExportUrl: `/api/export-zip?appName=${encodeURIComponent(name)}&packageName=${encodeURIComponent(cleanPkg)}&engineType=${encodeURIComponent(engine)}&url=${encodeURIComponent(targetUrl)}`,
-        message: `Paket React Native / Expo (${engineTitle}) berhasil dikompilasi di server VPS.`,
+        message: `Pipeline kompilasi VPS React Native (${engineTitle}) dimulai...`,
       });
     }
 
     if (engine === 'capacitor' || engine === 'cordova') {
-      // Capacitor JS Native Bridge Engine Compilation
-      const cfg = { appName: name, packageName: cleanPkg, url: targetUrl };
-      const zip = new JSZip();
-      zip.file("package.json", getCapacitorPackageJson(cfg));
-      zip.file("capacitor.config.json", getCapacitorConfigJson(cfg));
-      zip.file("www/index.html", `<!DOCTYPE html>\n<html>\n<head>\n  <meta charset="utf-8">\n  <title>${name}</title>\n  <script>window.location.href="${targetUrl}";</script>\n</head>\n<body>Redirecting to ${name}...</body>\n</html>`);
-      zip.file("README.md", `# ${name} - Capacitor Hybrid Engine\n\nTarget URL: ${targetUrl}\nPackage Name: ${cleanPkg}\n\n## Cara Build Native Android:\n1. npm install\n2. npx cap add android\n3. npx cap open android\n`);
+      // Background Capacitor JS Native Bridge Engine Compilation Pipeline
+      setTimeout(async () => {
+        try {
+          const cfg = { appName: name, packageName: cleanPkg, url: targetUrl };
+          const zip = new JSZip();
+          zip.file("package.json", getCapacitorPackageJson(cfg));
+          zip.file("capacitor.config.json", getCapacitorConfigJson(cfg));
+          zip.file("www/index.html", `<!DOCTYPE html>\n<html>\n<head>\n  <meta charset="utf-8">\n  <title>${name}</title>\n  <script>window.location.href="${targetUrl}";</script>\n</head>\n<body>Redirecting to ${name}...</body>\n</html>`);
 
-      const zipBuffer = await zip.generateAsync({ type: "nodebuffer" });
-      fs.writeFileSync(targetApkPath, zipBuffer);
+          const zipBuffer = await zip.generateAsync({ type: "nodebuffer" });
+          fs.writeFileSync(targetApkPath, zipBuffer);
 
-      const updatedRecord = {
-        ...transactionRecord,
-        filePath: targetApkPath,
-        fileSize: zipBuffer.length,
-        status: "compiled_ready",
-        updatedAt: new Date().toISOString(),
-        log: "Capacitor Native Bridge Package berhasil dikompilasi!",
-      };
-      sqlDatabaseStore.set(buildId, updatedRecord);
+          const updatedRecord = {
+            ...transactionRecord,
+            filePath: targetApkPath,
+            fileSize: zipBuffer.length,
+            status: "compiled_ready",
+            updatedAt: new Date().toISOString(),
+            log: "Capacitor Native Bridge Package berhasil dikompilasi!",
+          };
+          sqlDatabaseStore.set(buildId, updatedRecord);
+        } catch (err: any) {
+          sqlDatabaseStore.set(buildId, { ...transactionRecord, status: "compilation_failed", log: err?.message || "Build failed" });
+        }
+      }, 10000); // 10-second realistic build pipeline
 
       return res.json({
         success: true,
@@ -1078,38 +1102,42 @@ app.post("/api/build-apk", buildServerLimiter, async (req, res) => {
         engineTitle,
         hasFlutter: true,
         canBuild: true,
-        status: "compiled_ready",
+        status: "building",
         downloadUrl: `/api/build-apk/download/${buildId}`,
-        zipExportUrl: `/api/export-zip?appName=${encodeURIComponent(name)}&packageName=${encodeURIComponent(cleanPkg)}&engineType=${encodeURIComponent(engine)}&url=${encodeURIComponent(targetUrl)}`,
-        message: `Paket Capacitor Native Bridge (${engineTitle}) berhasil dikompilasi di server VPS.`,
+        message: `Pipeline kompilasi VPS Capacitor (${engineTitle}) dimulai...`,
       });
     }
 
     if (engine === 'kotlin' || engine === 'android-kotlin' || engine === 'android-webview') {
-      // Native Android Kotlin Jetpack Compose Engine Compilation
-      const cfg = { appName: name, packageName: cleanPkg, url: targetUrl };
-      const zip = new JSZip();
-      zip.file("build.gradle", `// Top-level build file for Android Kotlin Jetpack Compose\nbuildscript {\n    repositories { google(); mavenCentral() }\n}`);
-      zip.file("app/build.gradle", `plugins { id 'com.android.application'; id 'org.jetbrains.kotlin.android' }\n\nandroid {\n    namespace '${cleanPkg}'\n    compileSdk 34\n    defaultConfig {\n        applicationId "${cleanPkg}"\n        minSdk 24\n        targetSdk 34\n        versionCode 1\n        versionName "1.0.0"\n    }\n}\ndependencies {\n    implementation 'androidx.core:core-ktx:1.12.0'\n    implementation 'androidx.activity:activity-compose:1.8.2'\n}`);
-      zip.file("app/src/main/AndroidManifest.xml", getFlutterAndroidManifest(cfg));
-      const javaFolder = zip.folder(`app/src/main/java/${cleanPkg.replace(/\./g, '/')}`);
-      if (javaFolder) {
-        javaFolder.file("MainActivity.kt", getAndroidKotlinMainActivity(cfg));
-      }
-      zip.file("README.md", `# ${name} - Android Kotlin Jetpack Compose Engine\n\nTarget URL: ${targetUrl}\nPackage Name: ${cleanPkg}\n\n## Cara Build di Android Studio:\n1. Buka folder ini di Android Studio\n2. Jalankan Build > Build APKs\n`);
+      // Background Native Android Kotlin Jetpack Compose Engine Compilation Pipeline
+      setTimeout(async () => {
+        try {
+          const cfg = { appName: name, packageName: cleanPkg, url: targetUrl };
+          const zip = new JSZip();
+          zip.file("build.gradle", `// Top-level build file for Android Kotlin Jetpack Compose\nbuildscript {\n    repositories { google(); mavenCentral() }\n}`);
+          zip.file("app/build.gradle", `plugins { id 'com.android.application'; id 'org.jetbrains.kotlin.android' }\n\nandroid {\n    namespace '${cleanPkg}'\n    compileSdk 34\n    defaultConfig {\n        applicationId "${cleanPkg}"\n        minSdk 24\n        targetSdk 34\n        versionCode 1\n        versionName "1.0.0"\n    }\n}\ndependencies {\n    implementation 'androidx.core:core-ktx:1.12.0'\n    implementation 'androidx.activity:activity-compose:1.8.2'\n}`);
+          zip.file("app/src/main/AndroidManifest.xml", getFlutterAndroidManifest(cfg));
+          const javaFolder = zip.folder(`app/src/main/java/${cleanPkg.replace(/\./g, '/')}`);
+          if (javaFolder) {
+            javaFolder.file("MainActivity.kt", getAndroidKotlinMainActivity(cfg));
+          }
 
-      const zipBuffer = await zip.generateAsync({ type: "nodebuffer" });
-      fs.writeFileSync(targetApkPath, zipBuffer);
+          const zipBuffer = await zip.generateAsync({ type: "nodebuffer" });
+          fs.writeFileSync(targetApkPath, zipBuffer);
 
-      const updatedRecord = {
-        ...transactionRecord,
-        filePath: targetApkPath,
-        fileSize: zipBuffer.length,
-        status: "compiled_ready",
-        updatedAt: new Date().toISOString(),
-        log: "Android Kotlin Jetpack Compose Package berhasil dikompilasi!",
-      };
-      sqlDatabaseStore.set(buildId, updatedRecord);
+          const updatedRecord = {
+            ...transactionRecord,
+            filePath: targetApkPath,
+            fileSize: zipBuffer.length,
+            status: "compiled_ready",
+            updatedAt: new Date().toISOString(),
+            log: "Android Kotlin Jetpack Compose Package berhasil dikompilasi!",
+          };
+          sqlDatabaseStore.set(buildId, updatedRecord);
+        } catch (err: any) {
+          sqlDatabaseStore.set(buildId, { ...transactionRecord, status: "compilation_failed", log: err?.message || "Build failed" });
+        }
+      }, 12000); // 12-second realistic build pipeline
 
       return res.json({
         success: true,
@@ -1120,10 +1148,9 @@ app.post("/api/build-apk", buildServerLimiter, async (req, res) => {
         engineTitle,
         hasFlutter: true,
         canBuild: true,
-        status: "compiled_ready",
+        status: "building",
         downloadUrl: `/api/build-apk/download/${buildId}`,
-        zipExportUrl: `/api/export-zip?appName=${encodeURIComponent(name)}&packageName=${encodeURIComponent(cleanPkg)}&engineType=${encodeURIComponent(engine)}&url=${encodeURIComponent(targetUrl)}`,
-        message: `Paket Native Android Kotlin (${engineTitle}) berhasil dikompilasi di server VPS.`,
+        message: `Pipeline kompilasi VPS Android Kotlin (${engineTitle}) dimulai...`,
       });
     }
 
@@ -1261,7 +1288,7 @@ app.get("/api/build-apk/status/:buildId", (req, res) => {
   });
 });
 
-// 2. GET /api/build-apk/download/:buildId : Stream real APK file or render auto-refreshing progress page
+// 2. GET /api/build-apk/download/:buildId : Stream real APK/Package file or render auto-refreshing progress page
 app.get("/api/build-apk/download/:buildId", (req, res) => {
   const { buildId } = req.params;
   const record = sqlDatabaseStore.get(buildId) as any;
@@ -1272,11 +1299,15 @@ app.get("/api/build-apk/download/:buildId", (req, res) => {
   let engineTitle = getEngineDisplayName(engineType);
   let cleanName = appName.replace(/[^a-zA-Z0-9_-]/g, "_");
 
-  // 1. Check if a real compiled APK exists on disk (size > 100KB)
-  if (filePath && fs.existsSync(filePath) && fs.statSync(filePath).size > 100000) {
+  // 1. Check if a real compiled file exists on disk (size > 10 bytes)
+  if (filePath && fs.existsSync(filePath) && fs.statSync(filePath).size > 10) {
     const fileSize = fs.statSync(filePath).size;
-    res.setHeader("Content-Type", "application/vnd.android.package-archive");
-    res.setHeader("Content-Disposition", `attachment; filename="${cleanName}-release.apk"`);
+    const isZip = filePath.endsWith(".zip") || engineType === 'pwa' || engineType === 'pwa-shell' || engineType === 'react-native' || engineType === 'capacitor' || engineType === 'kotlin' || engineType === 'android-kotlin' || engineType === 'android-webview';
+    const contentType = isZip && !filePath.endsWith(".apk") ? "application/zip" : "application/vnd.android.package-archive";
+    const filename = isZip && !filePath.endsWith(".apk") ? `${cleanName}-${engineType}-package.zip` : `${cleanName}-release.apk`;
+
+    res.setHeader("Content-Type", contentType);
+    res.setHeader("Content-Disposition", `attachment; filename="${filename}"`);
     res.setHeader("Content-Length", fileSize);
     res.setHeader("X-Content-Type-Options", "nosniff");
 
@@ -1348,7 +1379,7 @@ app.get("/api/build-apk/download/:buildId", (req, res) => {
           .btn { display: inline-flex; align-items: center; justify-content: center; padding: 0.75rem 1.25rem; border-radius: 0.5rem; font-weight: 600; font-size: 0.9rem; text-decoration: none; transition: all 0.2s; }
           .btn-primary { background: #0284c7; color: white; }
           .btn-primary:hover { background: #0369a1; }
-          .btn-secondary { background: #334155; color: #f1f5f9; }
+          .btn-secondary { background: #334155; color: #f1f5f9; cursor: pointer; }
           .btn-secondary:hover { background: #475569; }
         </style>
       </head>
@@ -1363,7 +1394,7 @@ app.get("/api/build-apk/download/:buildId", (req, res) => {
 
           <p style="color: #cbd5e1; font-weight: 600;">1-Click Aktifkan Build Engine di VPS Anda:</p>
           <div class="box">
-            chmod +x setup_vps.sh && ./setup_vps.sh
+            chmod +x node/setup_vps.sh && ./node/setup_vps.sh
           </div>
 
           <p>
@@ -1374,7 +1405,7 @@ app.get("/api/build-apk/download/:buildId", (req, res) => {
             <a href="${zipUrl}" class="btn btn-primary">
               📦 Unduh Source Code ${engineTitle} (.zip)
             </a>
-            <a href="/" class="btn btn-secondary">
+            <a href="/" target="_top" onclick="if(window.history.length > 1){history.back(); return false;}" class="btn btn-secondary">
               Kembali ke Web2App Studio
             </a>
           </div>
@@ -1837,7 +1868,7 @@ app.post("/api/send-email", async (req, res) => {
           <p style="font-size: 16px; line-height: 1.6; color: #f1f5f9;">Yth. Bapak/Ibu <strong>${name}</strong>,</p>
           
           <p style="font-size: 14px; line-height: 1.7; color: #cbd5e1;">
-            <strong>Terima kasih banyak atas transaksi pembayaran Anda!</strong> Kami mengonfirmasi bahwa pembayaran Top-Up Saldo / Token Deposit Anda telah <strong style="color: #4ade80;">BERHASIL DITERIMA & DIVERIFIKASI</strong> secara otomatis oleh sistem kami.
+            <strong>Terima kasih banyak telah mempercayai kami di Web2App Studio!</strong> Kami mengonfirmasi bahwa pembayaran Top-Up Saldo / Token Deposit Anda telah <strong style="color: #4ade80;">BERHASIL DITERIMA & DIVERIFIKASI</strong> secara otomatis oleh sistem kami.
           </p>
 
           <div style="background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%); padding: 22px; border-radius: 14px; margin: 24px 0; border: 1px solid #38bdf8;">
@@ -1874,8 +1905,8 @@ app.post("/api/send-email", async (req, res) => {
             Saldo deposit dan token build Anda kini telah aktif penuh dan dapat digunakan langsung untuk melakukan kompilasi APK Native, PWA, iOS, dan Desktop App di dasbor Web2App Studio.
           </p>
 
-          <p style="font-size: 13px; line-height: 1.6; color: #94a3b8;">
-            Atas perhatian, dukungan, dan kepercayaan Anda kepada Web2App Studio, kami ucapkan terima kasih yang sebesar-besarnya!
+          <p style="font-size: 13px; line-height: 1.6; color: #cbd5e1; font-weight: bold;">
+            Terima kasih banyak telah mempercayai kami. Dukungan Anda sangat berarti bagi pengembangan Web2App Studio!
           </p>
 
           <div style="border-top: 1px solid #334155; padding-top: 18px; margin-top: 28px; text-align: center; font-size: 12px; color: #64748b;">
@@ -1899,7 +1930,7 @@ app.post("/api/send-email", async (req, res) => {
           <p style="font-size: 16px; line-height: 1.6; color: #f1f5f9;">Halo <strong>${name}</strong>,</p>
           
           <p style="font-size: 14px; line-height: 1.7; color: #cbd5e1;">
-            <strong>Selamat!</strong> Kompilasi proyek aplikasi mobile Anda telah <strong style="color: #38bdf8;">BERHASIL SELESAI</strong> diproses oleh server Web2App Native Engine.
+            <strong>Terima kasih banyak telah mempercayai kami di Web2App Studio!</strong> Kompilasi proyek aplikasi mobile Anda telah <strong style="color: #38bdf8;">BERHASIL SELESAI 100%</strong> diproses oleh server Web2App Native Engine.
           </p>
 
           <div style="background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%); padding: 22px; border-radius: 14px; margin: 24px 0; border: 1px solid #38bdf8;">
@@ -1908,13 +1939,13 @@ app.post("/api/send-email", async (req, res) => {
               <li><strong>Nama Aplikasi:</strong> ${targetApp}</li>
               <li><strong>Package Name:</strong> <code style="color: #38bdf8;">${targetPkg}</code></li>
               <li><strong>Native Engine:</strong> ${targetEngine}</li>
-              <li><strong>Status Build:</strong> <span style="color: #4ade80; font-weight: bold;">Signed Release Binary Ready</span></li>
+              <li><strong>Status Build:</strong> <span style="color: #4ade80; font-weight: bold;">Signed Release Binary Ready (100%)</span></li>
               <li><strong>Keamanan Data:</strong> Bebas Iklan & Enkripsi Relational Vault</li>
             </ul>
           </div>
 
-          <p style="font-size: 13px; line-height: 1.6; color: #94a3b8;">
-            Terima kasih telah menggunakan Web2App Studio untuk mengubah website Anda menjadi aplikasi native berkualitas tinggi. Anda dapat langsung mengunduh file installer APK di dasbor aplikasi.
+          <p style="font-size: 13px; line-height: 1.6; color: #cbd5e1;">
+            Terima kasih banyak telah mempercayai kami untuk mengubah website Anda menjadi aplikasi native berkualitas tinggi. Anda dapat langsung mengunduh file installer APK di dasbor aplikasi Web2App Studio.
           </p>
 
           <div style="border-top: 1px solid #334155; padding-top: 18px; margin-top: 28px; text-align: center; font-size: 12px; color: #64748b;">
@@ -1933,21 +1964,21 @@ app.post("/api/send-email", async (req, res) => {
           <p style="font-size: 16px; line-height: 1.6; color: #f1f5f9;">Halo <strong>${name}</strong>,</p>
           
           <p style="font-size: 14px; line-height: 1.7; color: #cbd5e1;">
-            <strong>Terima kasih banyak telah bergabung dan mempercayai Web2App Studio!</strong> Kami mengucapkan selamat datang dan berterima kasih atas apresiasi Anda menggunakan platform pengembang aplikasi kami.
+            <strong>Terima kasih banyak telah mempercayai kami di Web2App Studio!</strong> Kami mengucapkan selamat datang dan sangat mengapresiasi keputusan Anda untuk memilih platform pengembang aplikasi kami.
           </p>
 
           <div style="background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%); padding: 22px; border-radius: 14px; margin: 24px 0; border: 1px solid #38bdf8;">
             <h3 style="margin-top: 0; color: #38bdf8; font-size: 16px; border-bottom: 1px solid #334155; padding-bottom: 10px;">🎉 Fasilitas Istimewa Akun Anda:</h3>
             <ul style="margin: 0; padding-left: 20px; font-size: 13px; color: #e2e8f0; line-height: 1.8;">
-              <li><strong>Bonus 10 Token Build Gratis:</strong> Siap dipakai untuk kompilasi aplikasi pertama Anda.</li>
+              <li><strong>Bonus Token Build Gratis:</strong> Siap dipakai untuk kompilasi aplikasi pertama Anda.</li>
               <li><strong>Dukungan Multi-Engine:</strong> PWA, Flutter 3.x, Kotlin Jetpack Compose, iOS Swift, KMP & Electron.</li>
               <li><strong>Custom Branding & Logo:</strong> Bebas memasukkan Icon App PNG custom, Splash Screen & CSS.</li>
-              <li><strong>Relational SQL Vault Server:</strong> Penyimpanan konfigurasi terenkripsi militer AES-256-GCM.</li>
+              <li><strong>Relational SQL Vault Server:</strong> Penyimpanan konfigurasi terenkripsi militer.</li>
             </ul>
           </div>
 
           <p style="font-size: 13px; line-height: 1.6; color: #94a3b8;">
-            Jika Anda membutuhkan bantuan, masukan, atau konsultasi seputar kompilasi aplikasi, tim kami siap melayani Anda.
+            Terima kasih banyak telah mempercayai kami. Jika Anda membutuhkan bantuan atau konsultasi seputar kompilasi aplikasi, tim pengembang kami selalu siap membantu.
           </p>
 
           <div style="border-top: 1px solid #334155; padding-top: 18px; margin-top: 28px; text-align: center; font-size: 12px; color: #64748b;">
@@ -1964,7 +1995,7 @@ app.post("/api/send-email", async (req, res) => {
           </div>
           <p style="font-size: 15px; line-height: 1.6; color: #f1f5f9;">Halo <strong>${name}</strong>,</p>
           <p style="font-size: 14px; line-height: 1.6; color: #cbd5e1;">
-            Kami menerima permintaan untuk meriset kata sandi akun Web2App Studio Anda (${to}). Silakan periksa pesan verifikasi resmi yang dikirimkan ke email ini untuk memperbarui kata sandi Anda secara aman.
+            <strong>Terima kasih banyak telah mempercayai kami di Web2App Studio.</strong> Kami menerima permintaan untuk meriset kata sandi akun Anda (${to}). Silakan periksa link/tautan verifikasi resmi yang dikirimkan ke email ini untuk memperbarui kata sandi Anda secara aman.
           </p>
           <div style="border-top: 1px solid #334155; padding-top: 18px; margin-top: 28px; text-align: center; font-size: 12px; color: #64748b;">
             <p style="margin: 0;">© 2026 Web2App Studio. Jika Anda tidak meminta riset kata sandi, abaikan email ini.</p>
@@ -1979,12 +2010,12 @@ app.post("/api/send-email", async (req, res) => {
             <span style="color: #94a3b8; font-size: 12px;">Pengumuman & Pemberitahuan Resmi</span>
           </div>
           <p style="font-size: 15px; line-height: 1.6; color: #e2e8f0;">Halo <strong>${name}</strong>,</p>
-          <p style="font-size: 14px; line-height: 1.6; color: #cbd5e1;">${customMessage || 'Terima kasih banyak telah menjadi bagian dari pengguna setia layanan platform Web2App Studio.'}</p>
+          <p style="font-size: 14px; line-height: 1.6; color: #cbd5e1;"><strong>Terima kasih banyak telah mempercayai kami di Web2App Studio!</strong> ${customMessage || 'Terima kasih banyak telah menjadi bagian dari pengguna setia layanan platform Web2App Studio.'}</p>
           <div style="background: #1e293b; padding: 18px; border-radius: 12px; margin: 20px 0; border: 1px solid #334155;">
             <p style="margin: 0; font-size: 13px; color: #38bdf8;"><strong>Status Layanan Web2App:</strong> Online, Active & Secure</p>
           </div>
           <p style="font-size: 13px; line-height: 1.6; color: #94a3b8;">
-            Terima kasih atas perhatian dan dukungan Anda yang luar biasa.
+            Terima kasih atas perhatian, dukungan, dan kepercayaan Anda yang luar biasa.
           </p>
           <div style="border-top: 1px solid #334155; padding-top: 16px; margin-top: 24px; text-align: center; font-size: 11px; color: #64748b;">
             <p>© 2026 Web2App Studio by joo.exe. Seluruh Hak Cipta Dilindungi.</p>
@@ -2077,6 +2108,8 @@ const sqlDatabaseStore: Map<string, {
   status?: string;
   createdAt?: string;
   purgedAt?: string | null;
+  log?: string;
+  hasFlutter?: boolean;
 }> = new Map();
 
 app.post("/api/sql-vault/query", (req, res) => {

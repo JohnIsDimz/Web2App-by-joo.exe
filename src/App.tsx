@@ -13,7 +13,7 @@ import { SecurityPrivacyModal } from './components/SecurityPrivacyModal';
 import { ServerStatus } from './components/ServerStatus';
 import { AppConfig, WebSiteAnalysis } from './types';
 import { downloadFlutterProjectZip } from './utils/zipExporter';
-import { onAuthChange, subscribeUserProfile, saveUserProfile, isAdminUser, UserProfileData, DEMO_USER_PROFILE, deductToken } from './lib/firebase';
+import { onAuthChange, subscribeUserProfile, saveUserProfile, isAdminUser, UserProfileData, deductToken } from './lib/firebase';
 import { syncConfigToSqlDatabase } from './lib/sqlDatabase';
 import { loadEncryptedUserSession } from './lib/cookieSecurity';
 

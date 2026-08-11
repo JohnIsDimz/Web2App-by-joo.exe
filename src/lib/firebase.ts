@@ -5,6 +5,7 @@ import {
   signInWithPopup, 
   signInWithEmailAndPassword,
   createUserWithEmailAndPassword,
+  sendPasswordResetEmail,
   signOut as firebaseSignOut,
   onAuthStateChanged,
   User
@@ -76,20 +77,6 @@ export interface UserTransaction {
   timestamp: string;
 }
 
-export const DEMO_USER_PROFILE: UserProfileData = {
-  uid: 'demo-user-jooexe',
-  email: 'jooexe.demo@gmail.com',
-  displayName: 'Joo.exe (Demo Account)',
-  photoURL: null,
-  providerId: 'demo',
-  balance: 50000,
-  tokens: 25,
-  subscriptionPlan: 'Pro',
-  subscriptionExpiry: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
-  lastLogin: new Date().toISOString(),
-  createdAt: new Date().toISOString(),
-};
-
 /**
  * Sign in with Google Auth Provider
  */
@@ -106,20 +93,19 @@ export async function signInWithGoogle(): Promise<{ user: User; isNewUser: boole
     console.error("Google Sign-In Error:", error);
     const currentHost = typeof window !== 'undefined' ? window.location.hostname : '';
     
+    if (error.code === 'auth/network-request-failed' || error.message?.includes('network-request-failed')) {
+      throw new Error("Gagal terhubung ke server autentikasi Firebase. Silakan periksa koneksi internet Anda dan coba lagi.");
+    }
     if (error.code === 'auth/operation-not-allowed' || error.message?.includes('operation-not-allowed')) {
       throw new Error("Metode Google Sign-In belum diaktifkan di Firebase Console. Buka Firebase Console -> Authentication -> Sign-in method -> Tambahkan Provider Google, atau gunakan Email & Kata Sandi di atas.");
     }
-    if (error.code === 'auth/unauthorized-domain') {
-      throw new Error(`Domain "${currentHost}" belum terdaftar di Authorized Domains Firebase Console. Tambahkan domain ini di Firebase Console -> Authentication -> Settings -> Authorized Domains, atau gunakan Email & Kata Sandi di atas.`);
+    if (error.code === 'auth/unauthorized-domain' || error.message?.includes('unauthorized-domain')) {
+      throw new Error(`Domain host (${currentHost}) belum didaftarkan di Firebase Console. Buka Authentication -> Settings -> Authorized domains -> Tambahkan '${currentHost}'.`);
     }
     if (error.code === 'auth/popup-closed-by-user') {
-      throw new Error("Popup Google Login ditutup oleh pengguna sebelum selesai. Silakan coba lagi atau masuk dengan Email & Kata Sandi.");
+      throw new Error("Jendela login Google ditutup oleh pengguna sebelum selesai.");
     }
-    if (error.code === 'auth/popup-blocked' || error.code === 'auth/cancelled-popup-request') {
-      throw new Error("Popup Google Login terblokir oleh browser. Izinkan popup untuk situs ini atau masuk dengan Email & Kata Sandi.");
-    }
-    
-    throw new Error(`Google Login belum diaktifkan di project Firebase ini atau domain "${currentHost}" belum diizinkan. Silakan aktifkan di Firebase Console, atau buat akun baru di tab "Daftar Akun Baru" menggunakan Email & Kata Sandi.`);
+    throw new Error(error.message || "Gagal melakukan verifikasi akun Google.");
   }
 }
 
@@ -589,8 +575,88 @@ export async function signOutUser(): Promise<void> {
 }
 
 /**
+ * Login with Email & Password
+ */
+export async function loginWithEmail(email: string, pass: string): Promise<{ user: User; isNewUser: boolean }> {
+  try {
+    const userCred = await signInWithEmailAndPassword(auth, email, pass);
+    const user = userCred.user;
+    const profile = await saveUserProfile(user);
+    const isNewUser = (profile as any).isNewUser ?? false;
+    return { user, isNewUser };
+  } catch (error: any) {
+    console.error("Email Login Error:", error);
+    if (error.code === 'auth/network-request-failed' || error.message?.includes('network-request-failed')) {
+      throw new Error("Gagal terhubung ke server autentikasi Firebase. Silakan periksa koneksi internet Anda dan coba lagi.");
+    }
+    if (error.code === 'auth/wrong-password' || error.code === 'auth/user-not-found' || error.code === 'auth/invalid-credential') {
+      throw new Error("Email atau kata sandi tidak sesuai.");
+    }
+    if (error.code === 'auth/invalid-email') {
+      throw new Error("Format alamat email tidak valid.");
+    }
+    if (error.code === 'auth/too-many-requests') {
+      throw new Error("Terlalu banyak percobaan login gagal. Silakan coba lagi beberapa saat lagi.");
+    }
+    throw new Error(error.message || "Gagal masuk ke akun.");
+  }
+}
+
+/**
+ * Register with Email & Password
+ */
+export async function registerWithEmail(email: string, pass: string): Promise<{ user: User; isNewUser: boolean }> {
+  try {
+    const userCred = await createUserWithEmailAndPassword(auth, email, pass);
+    const user = userCred.user;
+    const profile = await saveUserProfile(user);
+    const isNewUser = (profile as any).isNewUser ?? true;
+    return { user, isNewUser };
+  } catch (error: any) {
+    console.error("Email Registration Error:", error);
+    if (error.code === 'auth/network-request-failed' || error.message?.includes('network-request-failed')) {
+      throw new Error("Gagal terhubung ke server autentikasi Firebase. Silakan periksa koneksi internet Anda dan coba lagi.");
+    }
+    if (error.code === 'auth/email-already-in-use') {
+      throw new Error("Email sudah terdaftar. Silakan pilih opsi Masuk.");
+    }
+    if (error.code === 'auth/weak-password') {
+      throw new Error("Kata sandi terlalu pendek (minimal 6 karakter).");
+    }
+    if (error.code === 'auth/invalid-email') {
+      throw new Error("Format alamat email tidak valid.");
+    }
+    throw new Error(error.message || "Gagal membuat akun baru.");
+  }
+}
+
+/**
+ * Reset User Password
+ */
+export async function resetUserPassword(email: string): Promise<void> {
+  try {
+    await sendPasswordResetEmail(auth, email);
+  } catch (error: any) {
+    console.error("Password Reset Error:", error);
+    if (error.code === 'auth/network-request-failed' || error.message?.includes('network-request-failed')) {
+      throw new Error("Gagal terhubung ke server autentikasi Firebase (auth/network-request-failed). Silakan periksa koneksi internet Anda.");
+    }
+    if (error.code === 'auth/user-not-found') {
+      throw new Error("Email tidak ditemukan dalam sistem.");
+    }
+    if (error.code === 'auth/invalid-email') {
+      throw new Error("Format alamat email tidak valid.");
+    }
+    throw new Error(error.message || "Gagal mengirim email instruksi riset kata sandi.");
+  }
+}
+
+/**
  * Subscribe to Auth State Changes
  */
 export function onAuthChange(callback: (user: User | null) => void) {
-  return onAuthStateChanged(auth, callback);
+  return onAuthStateChanged(auth, callback, (error) => {
+    console.warn("Firebase Auth state error (network-request-failed handled safely):", error);
+    callback(null);
+  });
 }

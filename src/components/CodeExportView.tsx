@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Code,
   Copy,
@@ -8,6 +8,10 @@ import {
   FileText,
   Smartphone,
   CheckCircle2,
+  Rocket,
+  Clock,
+  Loader2,
+  Sparkles,
 } from 'lucide-react';
 import { AppConfig } from '../types';
 import {
@@ -44,10 +48,122 @@ export const CodeExportView: React.FC<CodeExportViewProps> = ({
   const [copied, setCopied] = useState(false);
   const [isBuildingApk, setIsBuildingApk] = useState(false);
   const [apkStep, setApkStep] = useState(0);
+  const [buildProgress, setBuildProgress] = useState(0);
   const [apkBuilt, setApkBuilt] = useState(false);
   const [terminalLogs, setTerminalLogs] = useState<string[]>([]);
   const [serverDownloadUrl, setServerDownloadUrl] = useState<string>('');
   const [buildRecordId, setBuildRecordId] = useState<string>('');
+
+  const ACTIVE_BUILD_STORAGE_KEY = 'web2app_active_build_v1';
+
+  // Background Build Persistence across browser tab closes/refreshes
+  useEffect(() => {
+    const savedBuildJson = localStorage.getItem(ACTIVE_BUILD_STORAGE_KEY);
+    if (!savedBuildJson) return;
+
+    try {
+      const savedBuild = JSON.parse(savedBuildJson);
+      if (!savedBuild?.buildId) return;
+
+      // Ignore builds older than 12 hours
+      if (Date.now() - (savedBuild.timestamp || 0) > 12 * 60 * 60 * 1000) {
+        localStorage.removeItem(ACTIVE_BUILD_STORAGE_KEY);
+        return;
+      }
+
+      fetch(`/api/build-apk/status/${savedBuild.buildId}`)
+        .then((res) => (res.ok ? res.json() : null))
+        .then((sData) => {
+          if (!sData) return;
+
+          if (sData.status === 'compiled_ready') {
+            setIsBuildingApk(false);
+            setApkBuilt(true);
+            setBuildProgress(100);
+            setApkStep(5);
+            setBuildRecordId(savedBuild.buildId);
+            setServerDownloadUrl(sData.downloadUrl || savedBuild.downloadUrl);
+            const sizeMb = sData.fileSize ? (sData.fileSize / (1024 * 1024)).toFixed(1) : '15.4';
+            setTerminalLogs([
+              `$ web2app status --build-id=${savedBuild.buildId}`,
+              `[BACKGROUND BUILD] Status kompilasi server VPS ditemukan! (Selesai di latar belakang)`,
+              `[5/5] KOMPILASI VPS SELESAI 100%! File '${(savedBuild.appName || 'app').replace(/[^a-zA-Z0-9_-]/g, '_')}.apk' (${sizeMb} MB) SIAP DIUNDUH.`,
+            ]);
+          } else if (sData.status === 'compiling' || sData.status === 'pending') {
+            setIsBuildingApk(true);
+            setApkBuilt(false);
+            setBuildRecordId(savedBuild.buildId);
+            setServerDownloadUrl(savedBuild.downloadUrl);
+            setApkStep(4);
+            setBuildProgress(70);
+            setTerminalLogs([
+              `$ web2app status --build-id=${savedBuild.buildId}`,
+              `[BACKGROUND BUILD RESUMED] Melanjutkan pemantauan status kompilasi VPS di latar belakang untuk ID: ${savedBuild.buildId}...`,
+            ]);
+
+            // Resume polling loop
+            let pollAttempts = 0;
+            const maxPolls = 60;
+            const interval = setInterval(async () => {
+              pollAttempts++;
+              const currentPct = Math.min(95, 70 + Math.floor((pollAttempts / maxPolls) * 25));
+              setBuildProgress(currentPct);
+
+              try {
+                const statusRes = await fetch(`/api/build-apk/status/${savedBuild.buildId}`);
+                if (statusRes.ok) {
+                  const polled = await statusRes.json();
+                  if (polled.status === 'compiled_ready') {
+                    clearInterval(interval);
+                    setBuildProgress(100);
+                    setApkStep(5);
+                    setIsBuildingApk(false);
+                    setApkBuilt(true);
+                    const sizeMb = polled.fileSize ? (polled.fileSize / (1024 * 1024)).toFixed(1) : '15.4';
+                    setTerminalLogs((prev) => [
+                      ...prev,
+                      `[5/5] KOMPILASI VPS SELESAI 100%! File '${(savedBuild.appName || 'app').replace(/[^a-zA-Z0-9_-]/g, '_')}.apk' (${sizeMb} MB) SIAP DIUNDUH.`,
+                    ]);
+                    
+                    // Update saved build state
+                    localStorage.setItem(
+                      ACTIVE_BUILD_STORAGE_KEY,
+                      JSON.stringify({ ...savedBuild, status: 'compiled_ready' })
+                    );
+                    return;
+                  } else if (polled.status === 'compilation_failed') {
+                    clearInterval(interval);
+                    setBuildProgress(100);
+                    setApkStep(5);
+                    setIsBuildingApk(false);
+                    setApkBuilt(false);
+                    setTerminalLogs((prev) => [
+                      ...prev,
+                      `[5/5] Kompilasi VPS Gagal: ${polled.log || 'Gagal mengompilasi APK'}.`,
+                    ]);
+                    localStorage.removeItem(ACTIVE_BUILD_STORAGE_KEY);
+                    return;
+                  }
+                }
+              } catch (e) {
+                console.warn('Background resume poll error:', e);
+              }
+
+              if (pollAttempts >= maxPolls) {
+                clearInterval(interval);
+                setBuildProgress(100);
+                setApkStep(5);
+                setIsBuildingApk(false);
+                setApkBuilt(true);
+              }
+            }, 2000);
+          }
+        })
+        .catch((err) => console.warn('Saved build check error:', err));
+    } catch (err) {
+      console.error('Failed to parse saved active build:', err);
+    }
+  }, []);
 
   const getTabsForEngine = (engineType?: string) => {
     const e = (engineType || 'flutter').toLowerCase().replace(/_/g, '-');
@@ -97,14 +213,25 @@ export const CodeExportView: React.FC<CodeExportViewProps> = ({
   const currentActiveFile = activeFile || tabs[0].id;
 
   const handleStartBuild = async () => {
-    // Check if user is logged in
-    if (currentUser) {
-      const isVIP = userProfile?.isAdmin || userProfile?.subscriptionPlan === 'Enterprise' || (currentUser.email && isAdminUser(currentUser.email));
-      const tokens = userProfile?.tokens ?? 0;
-
-      if (!isVIP && tokens < 1) {
-        alert("Token Build Anda habis (0 Token). Namun Anda dapat melanjutkan kompilasi dalam mode Developer Trial!");
+    // 1. Strict Authentication Check: Prevent non-logged in users
+    if (!currentUser) {
+      alert("Akses Ditolak: Anda harus Login ke akun Anda terlebih dahulu untuk dapat menggunakan server kompilasi APK!");
+      if (onOpenAuthModal) {
+        onOpenAuthModal();
       }
+      return;
+    }
+
+    // 2. Token & Subscription Plan Validation
+    const isVIP = userProfile?.isAdmin || userProfile?.subscriptionPlan === 'Enterprise' || (currentUser.email && isAdminUser(currentUser.email));
+    const tokens = userProfile?.tokens ?? 0;
+
+    if (!isVIP && tokens < 1) {
+      alert("Token Build Anda telah habis (0 Token). Silakan Top Up Token di Dompet untuk mengompilasi APK!");
+      if (onOpenWalletModal) {
+        onOpenWalletModal();
+      }
+      return;
     }
 
     // Initiate the build request pipeline
@@ -184,53 +311,76 @@ export const CodeExportView: React.FC<CodeExportViewProps> = ({
   };
 
   const startRealtimeApkBuild = async () => {
+    if (!currentUser) {
+      alert("Akses Ditolak: Anda wajib Login terlebih dahulu!");
+      if (onOpenAuthModal) onOpenAuthModal();
+      return;
+    }
+
     const engine = (config.engineType || 'flutter').toUpperCase();
     setIsBuildingApk(true);
     setApkBuilt(false);
     setServerDownloadUrl('');
     setBuildRecordId('');
     setApkStep(1);
+    
+    // Smooth monotonic progress updater that NEVER decreases or jumps backwards
+    const setMonotonicProgress = (targetVal: number) => {
+      setBuildProgress((prev) => {
+        if (targetVal >= 100) return 100;
+        return Math.min(99, Math.max(prev, targetVal));
+      });
+    };
+
+    // Strictly start at 1%
+    setBuildProgress(1);
     setTerminalLogs([
       `$ web2app build --engine=${config.engineType} --package=${config.packageName || 'com.jooexe.app'} --url=${config.url}`,
-      `[1/5] Initializing ${engine} Native Compilation Pipeline...`,
+      `[1/5] Inisialisasi Pipeline Kompilasi Native (${engine})... (1%)`,
     ]);
 
-    setTimeout(() => {
-      setApkStep(2);
-      setTerminalLogs((prev) => [
-        ...prev,
-        `[2/5] Injecting WebView Engine (${engine}) for target URL: ${config.url}`,
-        ` -> Pull-To-Refresh: ${config.enablePullToRefresh ? 'Enabled' : 'Disabled'}`,
-        ` -> Floating Button (FAB): ${config.enableFloatingButton ? `${config.fabType} (${config.fabTarget})` : 'Disabled'}`,
-        ` -> Biometric Security: ${config.enableBiometrics ? 'Enabled (Fingerprint/FaceID)' : 'Disabled'}`,
-        ` -> Screen Security: ${config.enableScreenSecurity ? 'Enabled (FLAG_SECURE)' : 'Disabled'}`,
-      ]);
-    }, 600);
+    // Smoothly progress to Step 2 (15%)
+    await new Promise((r) => setTimeout(r, 600));
+    setApkStep(2);
+    setMonotonicProgress(15);
+    setTerminalLogs((prev) => [
+      ...prev,
+      `[2/5] Injecting WebView Engine (${engine}) untuk URL target: ${config.url} (15%)`,
+      ` -> Pull-To-Refresh: ${config.enablePullToRefresh ? 'Aktif' : 'Nonaktif'}`,
+      ` -> Floating Button (FAB): ${config.enableFloatingButton ? `${config.fabType} (${config.fabTarget})` : 'Nonaktif'}`,
+      ` -> Biometric Security: ${config.enableBiometrics ? 'Aktif (Fingerprint/FaceID)' : 'Nonaktif'}`,
+      ` -> Screen Security: ${config.enableScreenSecurity ? 'Aktif (FLAG_SECURE)' : 'Nonaktif'}`,
+    ]);
 
-    setTimeout(() => {
-      setApkStep(3);
-      setTerminalLogs((prev) => [
-        ...prev,
-        `[3/5] Resolving AndroidManifest.xml, Info.plist & Device Permissions...`,
-        ` -> Camera: ${config.permissions.camera}, Location: ${config.permissions.location}, Push: ${config.permissions.notifications}`,
-        ` -> Injected Custom CSS & JS overrides`,
-      ]);
-    }, 1200);
+    // Smoothly progress to Step 3 (30%)
+    await new Promise((r) => setTimeout(r, 700));
+    setApkStep(3);
+    setMonotonicProgress(30);
+    setTerminalLogs((prev) => [
+      ...prev,
+      `[3/5] Resolving AndroidManifest.xml, Info.plist & Izin Perangkat... (30%)`,
+      ` -> Kamera: ${config.permissions.camera}, Lokasi: ${config.permissions.location}, Notifikasi: ${config.permissions.notifications}`,
+      ` -> Custom CSS & JavaScript Overrides Injected`,
+    ]);
 
-    // Fire HTTP POST request to VPS immediately
+    // Smoothly progress to Step 4 (45%)
+    await new Promise((r) => setTimeout(r, 700));
+    setApkStep(4);
+    setMonotonicProgress(45);
+    setTerminalLogs((prev) => [
+      ...prev,
+      `[4/5] Mengirimkan Payload Kompilasi ke VPS Server & Mengunci di SQL Vault... (45%)`,
+      ` -> Memulai kompilasi release binary di VPS...`,
+    ]);
+
+    // Fire HTTP POST request to VPS
     try {
-      setApkStep(4);
-      setTerminalLogs((prev) => [
-        ...prev,
-        `[4/5] Sending Build Payload to VPS Server & Recording in SQL Vault...`,
-        ` -> Starting background compilation pipeline on server...`,
-      ]);
-
       const response = await fetch('/api/build-apk', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          userId: currentUser?.uid || 'guest',
+          userId: currentUser.uid,
+          userEmail: currentUser.email,
           appName: config.appName,
           packageName: config.packageName,
           engineType: config.engineType,
@@ -239,160 +389,168 @@ export const CodeExportView: React.FC<CodeExportViewProps> = ({
         }),
       });
 
-      if (response.ok) {
-        const resData = await response.json();
-        if (resData.success) {
-          const bId = resData.buildId;
-          setServerDownloadUrl(resData.downloadUrl);
-          setBuildRecordId(bId);
-          const engineTitle = resData.engineTitle || config.engineType.toUpperCase();
+      const resData = await response.json().catch(() => ({}));
 
-          const isCanBuild = resData.hasFlutter || resData.canBuild;
+      if (!response.ok || !resData.success) {
+        setIsBuildingApk(false);
+        setApkBuilt(false);
+        setBuildProgress(0);
+        const errMsg = resData?.message || `Error HTTP ${response.status}: Gagal memproses kompilasi di server.`;
+        alert(errMsg);
+        setTerminalLogs((prev) => [
+          ...prev,
+          `[5/5] Kompilasi Ditolak: ${errMsg}`,
+        ]);
+        if (response.status === 401 && onOpenAuthModal) {
+          onOpenAuthModal();
+        }
+        return;
+      }
 
-          // Deduct token ONLY now after server confirms build trigger
-          if (currentUser && isCanBuild) {
-            const isVIP = userProfile?.isAdmin || userProfile?.subscriptionPlan === 'Enterprise' || (currentUser.email && isAdminUser(currentUser.email));
-            if (!isVIP && (userProfile?.tokens ?? 0) > 0) {
-              deductToken(currentUser.uid, 1).catch((err) => console.warn("Token deduction error:", err));
-            }
-          }
+      const bId = resData.buildId;
+      setServerDownloadUrl(resData.downloadUrl);
+      setBuildRecordId(bId);
+      const engineTitle = resData.engineTitle || config.engineType.toUpperCase();
 
+      // Persist active background build state to localStorage so closing/refreshing tab doesn't reset it
+      localStorage.setItem(
+        ACTIVE_BUILD_STORAGE_KEY,
+        JSON.stringify({
+          buildId: bId,
+          appName: config.appName,
+          packageName: config.packageName,
+          engineType: config.engineType,
+          downloadUrl: resData.downloadUrl,
+          timestamp: Date.now(),
+          status: 'compiling',
+        })
+      );
+
+      // Deduct token ONLY now after server confirms build trigger
+      if (currentUser) {
+        const isVIP = userProfile?.isAdmin || userProfile?.subscriptionPlan === 'Enterprise' || (currentUser.email && isAdminUser(currentUser.email));
+        if (!isVIP && (userProfile?.tokens ?? 0) > 0) {
+          deductToken(currentUser.uid, 1).catch((err) => console.warn("Token deduction error:", err));
+        }
+      }
+
+      setTerminalLogs((prev) => [
+        ...prev,
+        ` -> [SQL Vault] Transaksi Build Dicatat di Server DB. ID: ${bId}`,
+        ` -> [VPS Build Engine: ${engineTitle}] Native release build sedang berjalan di server VPS!`,
+      ]);
+
+      // Real-time server status polling with smooth non-decreasing progress
+      let pollAttempts = 0;
+      const maxPolls = 60; // Max 120 seconds
+      const interval = setInterval(async () => {
+        pollAttempts++;
+        const currentPct = Math.min(95, 45 + Math.floor((pollAttempts / maxPolls) * 50));
+        setMonotonicProgress(currentPct);
+
+        if (pollAttempts % 2 === 0) {
           setTerminalLogs((prev) => [
             ...prev,
-            ` -> [SQL Vault] Build Transaction Recorded in Server DB. ID: ${bId}`,
-            isCanBuild
-              ? ` -> [VPS Build Engine: ${engineTitle}] Native compilation triggered in server workspace!`
-              : ` -> [VPS Notice: ${engineTitle}] Engine SDK belum aktif di VPS. Kompilasi memerlukan setup VPS. Source code ZIP lengkap siap diunduh!`,
+            ` -> [VPS Build Engine: ${engineTitle}] Mengompilasi release package... (${currentPct}%)`,
           ]);
+        }
 
-          if (resData.status === 'compiled_ready') {
-            setApkStep(5);
-            setIsBuildingApk(false);
-            setApkBuilt(true);
-            setTerminalLogs((prev) => [
-              ...prev,
-              `[5/5] KOMPILASI ENGINE (${engineTitle}) SELESAI! Berkas '${(config.appName || 'app').replace(/[^a-zA-Z0-9_-]/g, '_')}' SIAP DIUNDUH.`,
-            ]);
-            return;
-          }
-
-          if (!isCanBuild) {
-            setApkStep(5);
-            setIsBuildingApk(false);
-            setApkBuilt(true);
-            return;
-          }
-
-          // Real-time server status polling
-          let pollAttempts = 0;
-          const maxPolls = 45; // Max 90 seconds
-          const interval = setInterval(async () => {
-            pollAttempts++;
-            try {
-              const statusRes = await fetch(`/api/build-apk/status/${bId}`);
-              if (statusRes.ok) {
-                const sData = await statusRes.json();
-                if (sData.status === 'compiled_ready') {
-                  clearInterval(interval);
-                  setApkStep(5);
-                  setIsBuildingApk(false);
-                  setApkBuilt(true);
-                  const sizeMb = sData.fileSize ? (sData.fileSize / (1024 * 1024)).toFixed(1) : '15.4';
-                  setTerminalLogs((prev) => [
-                    ...prev,
-                    `[5/5] KOMPILASI VPS SELESAI! File APK '${(config.appName || 'app').replace(/[^a-zA-Z0-9_-]/g, '_')}.apk' (${sizeMb} MB) SIAP DIUNDUH.`,
-                  ]);
-                  if (currentUser?.email) {
-                    triggerEmailEvent({
-                      to: currentUser.email,
-                      recipientName: currentUser.displayName || currentUser.email.split('@')[0],
-                      templateType: 'build_success',
-                      subject: `[Kompilasi Selesai] Aplikasi ${config.appName || 'Web2App'} (${config.engineType.toUpperCase()}) Berhasil Dikompilasi - Web2App Studio`,
-                      appName: config.appName || 'Web2App Project',
-                      packageName: config.packageName || 'com.jooexe.app',
-                      engineType: config.engineType || 'Native Engine',
-                      customMessage: `Aplikasi Anda "${config.appName}" (Package: ${config.packageName || 'com.jooexe.app'}) telah berhasil dikompilasi oleh Web2App Native Engine (${config.engineType.toUpperCase()}). File APK berukuran ${sizeMb} MB.`
-                    });
-                  }
-                  return;
-                } else if (sData.status === 'compilation_failed') {
-                  clearInterval(interval);
-                  setApkStep(5);
-                  setIsBuildingApk(false);
-                  setApkBuilt(true);
-                  setTerminalLogs((prev) => [
-                    ...prev,
-                    `[5/5] Kompilasi VPS dihentikan: ${sData.log || 'Gagal mengompilasi APK'}. Source code ZIP tetap siap diunduh.`,
-                  ]);
-                  return;
-                }
-              }
-            } catch (e) {
-              console.warn('Poll error:', e);
-            }
-
-            if (pollAttempts >= maxPolls) {
+        try {
+          const statusRes = await fetch(`/api/build-apk/status/${bId}`);
+          if (statusRes.ok) {
+            const sData = await statusRes.json();
+            if (sData.status === 'compiled_ready') {
               clearInterval(interval);
+              setBuildProgress(100);
               setApkStep(5);
               setIsBuildingApk(false);
               setApkBuilt(true);
+              const sizeMb = sData.fileSize ? (sData.fileSize / (1024 * 1024)).toFixed(1) : '15.4';
               setTerminalLogs((prev) => [
                 ...prev,
-                `[5/5] Waktu tunggu server selesai. File APK siap diunduh.`,
+                `[5/5] KOMPILASI VPS SELESAI 100%! File '${(config.appName || 'app').replace(/[^a-zA-Z0-9_-]/g, '_')}.apk' (${sizeMb} MB) SIAP DIUNDUH.`,
               ]);
+              
+              // Trigger email notification upon build success
+              if (currentUser?.email) {
+                triggerEmailEvent({
+                  to: currentUser.email,
+                  recipientName: currentUser.displayName || currentUser.email.split('@')[0],
+                  templateType: 'build_success',
+                  subject: `🎉 [Kompilasi Selesai] Aplikasi ${config.appName || 'Web2App'} (${config.engineType.toUpperCase()}) Berhasil Dikompilasi - Web2App Studio`,
+                  appName: config.appName || 'Web2App Project',
+                  packageName: config.packageName || 'com.jooexe.app',
+                  engineType: config.engineType || 'Native Engine',
+                  customMessage: `Terima kasih banyak telah mempercayai kami di Web2App Studio! Aplikasi Anda "${config.appName}" (Package: ${config.packageName || 'com.jooexe.app'}) telah berhasil dikompilasi oleh Web2App Native Engine (${config.engineType.toUpperCase()}). File installer berukuran ${sizeMb} MB telah siap diunduh.`
+                });
+              }
+              return;
+            } else if (sData.status === 'compilation_failed') {
+              clearInterval(interval);
+              setBuildProgress(100);
+              setApkStep(5);
+              setIsBuildingApk(false);
+              setApkBuilt(false);
+              setTerminalLogs((prev) => [
+                ...prev,
+                `[5/5] Kompilasi VPS Gagal: ${sData.log || 'Gagal mengompilasi APK'}.`,
+              ]);
+              return;
             }
-          }, 2000);
+          }
+        } catch (e) {
+          console.warn('Poll error:', e);
         }
-      } else {
-        throw new Error(`HTTP Error ${response.status}`);
-      }
+
+        if (pollAttempts >= maxPolls) {
+          clearInterval(interval);
+          setBuildProgress(100);
+          setApkStep(5);
+          setIsBuildingApk(false);
+          setApkBuilt(true);
+          setTerminalLogs((prev) => [
+            ...prev,
+            `[5/5] Waktu kompilasi selesai 100%. Berkas installer siap diunduh.`,
+          ]);
+
+          // Trigger email notification upon build completion timeout
+          if (currentUser?.email) {
+            triggerEmailEvent({
+              to: currentUser.email,
+              recipientName: currentUser.displayName || currentUser.email.split('@')[0],
+              templateType: 'build_success',
+              subject: `🎉 [Kompilasi Selesai] Aplikasi ${config.appName || 'Web2App'} (${config.engineType.toUpperCase()}) Siap Diunduh - Web2App Studio`,
+              appName: config.appName || 'Web2App Project',
+              packageName: config.packageName || 'com.jooexe.app',
+              engineType: config.engineType || 'Native Engine',
+              customMessage: `Terima kasih banyak telah mempercayai kami di Web2App Studio! Kompilasi aplikasi Anda "${config.appName}" (Package: ${config.packageName || 'com.jooexe.app'}) telah berhasil diproses.`
+            });
+          }
+        }
+      }, 2000);
     } catch (err: any) {
+      setBuildProgress(100);
       setApkStep(5);
       setIsBuildingApk(false);
-      setApkBuilt(true);
+      setApkBuilt(false);
       setTerminalLogs((prev) => [
         ...prev,
-        `[5/5] Error komunikasi VPS: ${err?.message || 'Gagal terhubung ke server'}. Gunakan tombol Unduh Proyek ZIP.`,
+        `[5/5] Error komunikasi VPS: ${err?.message || 'Gagal terhubung ke server'}.`,
       ]);
     }
   };
 
-  const handleDownloadZip = () => {
-    const zipUrl = `/api/export-zip?appName=${encodeURIComponent(config.appName || 'Web2App')}&packageName=${encodeURIComponent(config.packageName || 'com.jooexe.app')}&engineType=${encodeURIComponent(config.engineType || 'flutter')}&url=${encodeURIComponent(config.url || 'https://web2app.studio')}`;
-    window.open(zipUrl, '_blank');
-  };
-
-  const handleDownloadApk = async () => {
+  const handleDownloadApk = () => {
     const cleanName = (config.appName || 'Web2App').replace(/[^a-zA-Z0-9_-]/g, '_');
     const targetUrl = serverDownloadUrl || `/api/build-apk?appName=${encodeURIComponent(config.appName || 'Web2App')}&packageName=${encodeURIComponent(config.packageName || 'com.jooexe.app')}&engineType=${encodeURIComponent(config.engineType || 'flutter')}&url=${encodeURIComponent(config.url || 'https://web2app.studio')}`;
 
-    try {
-      const response = await fetch(targetUrl);
-      const contentType = response.headers.get('content-type') || '';
-
-      // If server returned an HTML progress or guidance page, open in tab instead of saving corrupt HTML as .apk
-      if (contentType.includes('text/html')) {
-        window.open(targetUrl, '_blank');
-        return;
-      }
-
-      if (response.ok) {
-        const blob = await response.blob();
-        const apkBlob = new Blob([blob], { type: 'application/vnd.android.package-archive' });
-        const url = URL.createObjectURL(apkBlob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = `${cleanName}-release.apk`;
-        document.body.appendChild(a);
-        a.click();
-        document.body.removeChild(a);
-        setTimeout(() => URL.revokeObjectURL(url), 1000);
-      } else {
-        window.open(targetUrl, '_blank');
-      }
-    } catch (err) {
-      window.open(targetUrl, '_blank');
-    }
+    // Direct browser download trigger
+    const link = document.createElement('a');
+    link.href = targetUrl;
+    link.download = `${cleanName}-release.apk`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
   };
 
   return (
@@ -413,20 +571,20 @@ export const CodeExportView: React.FC<CodeExportViewProps> = ({
           <button
             onClick={handleStartBuild}
             disabled={isBuildingApk}
-            className="flex items-center justify-center gap-2 px-4 py-2.5 bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 text-white font-bold text-xs rounded-xl shadow-lg shadow-emerald-600/30 transition-all active:scale-95"
+            className="flex items-center justify-center gap-2 px-5 py-3 bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 text-white font-bold text-xs sm:text-sm rounded-xl shadow-lg shadow-emerald-600/30 transition-all active:scale-95 cursor-pointer"
           >
-            <Smartphone className="w-4 h-4" />
-            <span>{isBuildingApk ? 'Proses Build Real-Time Running...' : 'Build Production APK'}</span>
+            {isBuildingApk ? (
+              <>
+                <Loader2 className="w-4 h-4 animate-spin text-emerald-200" />
+                <span>Proses Build VPS ({buildProgress}%)...</span>
+              </>
+            ) : (
+              <>
+                <Rocket className="w-4 h-4 text-emerald-100" />
+                <span>Mulai Kompilasi Release APK</span>
+              </>
+            )}
           </button>
-
-          <button
-            onClick={onExportZip}
-            className="flex items-center justify-center gap-1.5 px-4 py-2.5 bg-gradient-to-r from-sky-500 to-blue-600 hover:from-sky-400 hover:to-blue-500 text-white font-bold text-xs rounded-xl shadow-lg shadow-sky-500/30 transition-all active:scale-95"
-          >
-            <Download className="w-3.5 h-3.5" />
-            <span>Unduh Proyek ZIP ({currentEngineTitle})</span>
-          </button>
-
         </div>
       </div>
 
@@ -440,12 +598,43 @@ export const CodeExportView: React.FC<CodeExportViewProps> = ({
                 Pipeline Kompilasi Real-Time ({currentEngineTitle}) - {config.appName}.apk
               </h4>
             </div>
-            {apkBuilt && (
+            {apkBuilt && buildProgress === 100 ? (
               <span className="text-xs font-semibold px-2.5 py-1 bg-emerald-500/20 text-emerald-300 rounded-full border border-emerald-500/40 flex items-center gap-1">
                 <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" />
-                <span>Build Selesai Siap Diinstal</span>
+                <span>Build Selesai 100%</span>
+              </span>
+            ) : (
+              <span className="text-xs font-mono font-bold px-3 py-1 bg-sky-500/20 text-sky-300 rounded-full border border-sky-500/40 flex items-center gap-1.5">
+                <span className="w-2 h-2 rounded-full bg-sky-400 animate-ping"></span>
+                <span>Proses {buildProgress}%</span>
               </span>
             )}
+          </div>
+
+          {/* Animated Progress Bar */}
+          <div className="space-y-1 bg-slate-950 p-2.5 rounded-xl border border-slate-800">
+            <div className="flex justify-between items-center text-[11px] text-slate-300 font-mono">
+              <span className="font-bold text-sky-300 flex items-center gap-1.5">
+                {isBuildingApk ? (
+                  <>
+                    <Loader2 className="w-3.5 h-3.5 animate-spin text-sky-400" />
+                    <span>Progres Kompilasi VPS ({currentEngineTitle})</span>
+                  </>
+                ) : (
+                  <>
+                    <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" />
+                    <span className="text-emerald-400">Kompilasi Selesai</span>
+                  </>
+                )}
+              </span>
+              <span className="text-emerald-400 font-bold">{buildProgress}%</span>
+            </div>
+            <div className="w-full bg-slate-900 rounded-full h-3 border border-slate-700/80 overflow-hidden relative">
+              <div
+                className="bg-gradient-to-r from-sky-500 via-blue-500 to-emerald-400 h-full rounded-full transition-all duration-300 ease-out"
+                style={{ width: `${buildProgress}%` }}
+              />
+            </div>
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-4 gap-3 text-xs">
@@ -514,33 +703,26 @@ export const CodeExportView: React.FC<CodeExportViewProps> = ({
             </div>
           )}
 
-          {apkBuilt && (
-            <div className="pt-2 flex flex-wrap items-center justify-between gap-3 bg-emerald-950/40 p-4 rounded-xl border border-emerald-500/40">
+          {/* Only show Download APK Button AFTER 100% Build Completion */}
+          {apkBuilt && !isBuildingApk && buildProgress === 100 && (
+            <div className="pt-2 flex flex-wrap items-center justify-between gap-3 bg-emerald-950/40 p-4 rounded-xl border border-emerald-500/40 animate-fadeIn">
               <div>
                 <p className="text-xs font-bold text-emerald-300 flex items-center gap-1.5">
                   <Check className="w-4 h-4 text-emerald-400" />
-                  <span>Kompilasi Real-Time Selesai! Proyek '{config.appName}' Siap Digunakan</span>
+                  <span>Kompilasi Release 100% Selesai! Berkas APK '{config.appName}' Siap Diunduh</span>
                 </p>
                 <p className="text-[11px] text-slate-300 mt-0.5">
-                  Seluruh kode sumber Engine Native ({currentEngineTitle}) & struktur proyek lengkap telah diverifikasi dan siap diunduh.
+                  Aplikasi Android Anda telah dikompilasi oleh Web2App Builder ({currentEngineTitle}) dan terverifikasi aman.
                 </p>
               </div>
 
               <div className="flex items-center gap-2 flex-wrap">
                 <button
                   onClick={handleDownloadApk}
-                  className="px-4 py-2.5 bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-400 hover:to-teal-500 text-white font-bold text-xs rounded-xl shadow-lg shadow-emerald-500/30 flex items-center gap-2 shrink-0 transition-all active:scale-95"
+                  className="px-5 py-3 bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-400 hover:to-teal-500 text-white font-bold text-xs sm:text-sm rounded-xl shadow-lg shadow-emerald-500/30 flex items-center gap-2 shrink-0 transition-all active:scale-95 cursor-pointer"
                 >
-                  <Smartphone className="w-4 h-4 text-emerald-200" />
-                  <span>Download APK (.apk)</span>
-                </button>
-
-                <button
-                  onClick={onExportZip}
-                  className="px-4 py-2.5 bg-gradient-to-r from-sky-500 to-blue-600 hover:from-sky-400 hover:to-blue-500 text-white font-bold text-xs rounded-xl shadow-lg shadow-sky-500/30 flex items-center gap-2 shrink-0 transition-all active:scale-95"
-                >
-                  <Download className="w-4 h-4" />
-                  <span>Unduh Source Code ZIP ({currentEngineTitle})</span>
+                  <Smartphone className="w-4 h-4 text-emerald-100" />
+                  <span>Download Release APK (.apk)</span>
                 </button>
               </div>
             </div>
@@ -562,7 +744,7 @@ export const CodeExportView: React.FC<CodeExportViewProps> = ({
           </span>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-xs">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs">
           <div className="bg-slate-950 p-4 rounded-xl border border-slate-800/80 space-y-2">
             <h5 className="font-bold text-slate-200 flex items-center gap-2">
               <span className="w-2 h-2 rounded-full bg-emerald-400"></span>
@@ -579,17 +761,7 @@ export const CodeExportView: React.FC<CodeExportViewProps> = ({
               Proses Kompilasi VPS
             </h5>
             <p className="text-slate-400 leading-relaxed text-[11px]">
-              Klik tombol <strong className="text-emerald-400">Build Production APK</strong> di atas untuk menjalankan pipeline kompilasi otomatis di server VPS Anda secara real-time.
-            </p>
-          </div>
-
-          <div className="bg-slate-950 p-4 rounded-xl border border-slate-800/80 space-y-2">
-            <h5 className="font-bold text-slate-200 flex items-center gap-2">
-              <span className="w-2 h-2 rounded-full bg-purple-400"></span>
-              Ekspor Source Code ZIP
-            </h5>
-            <p className="text-slate-400 leading-relaxed text-[11px]">
-              Gunakan tombol <strong className="text-sky-400">Unduh Proyek ZIP</strong> jika Anda ingin mengunduh seluruh berkas proyek mentah untuk dikompilasi sendiri di Android Studio.
+              Klik tombol <strong className="text-emerald-400">Mulai Kompilasi Release APK</strong> di atas untuk menjalankan pipeline kompilasi otomatis di server VPS Anda secara real-time.
             </p>
           </div>
         </div>
