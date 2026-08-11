@@ -260,7 +260,7 @@ export const CodeExportView: React.FC<CodeExportViewProps> = ({
             ` -> [SQL Vault] Build Transaction Recorded in Server DB. ID: ${bId}`,
             resData.hasFlutter
               ? ` -> [VPS Build Engine: ${engineTitle}] Native compilation triggered in server workspace!`
-              : ` -> [VPS Notice: ${engineTitle}] Flutter SDK belum aktif di VPS. Kompilasi otomatis memerlukan setup_vps.sh. Source code ZIP lengkap siap diunduh!`,
+              : ` -> [VPS Notice: ${engineTitle}] Flutter SDK belum aktif di VPS. Kompilasi otomatis memerlukan node/setup_vps.sh. Source code ZIP lengkap siap diunduh!`,
           ]);
 
           if (!resData.hasFlutter) {

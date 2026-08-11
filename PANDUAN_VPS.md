@@ -78,7 +78,7 @@ cd /var/www/web2app
 
 ## 4. Langkah 4: Instalasi Otomatis Server VPS (1-Click Installer)
 
-Kami telah menyediakan script otomatis `setup_vps.sh` langsung di root folder project yang akan menginstall semua dependensi sistem:
+Kami telah menyediakan script otomatis `node/setup_vps.sh` yang akan menginstall semua dependensi sistem:
 - **Node.js 20 LTS** & **PM2** (Process Manager)
 - **Java OpenJDK 17** (Syarat Build APK Android)
 - **Flutter SDK** (Build Engine Native)
@@ -92,12 +92,12 @@ Kami telah menyediakan script otomatis `setup_vps.sh` langsung di root folder pr
 cd /var/www/web2app
 
 # 2. Beri izin & jalankan installer otomatis (1 Perintah Langsung Jalan)
-chmod +x setup_vps.sh && ./setup_vps.sh
+chmod +x node/setup_vps.sh && ./node/setup_vps.sh
 ```
 
-> 💡 **Opsi Alternatif:** Jika Anda ingin menjalankan dari folder `node joo.exe`, gunakan perintah `bash` dengan tanda kutip ganda agar spasinya terbaca oleh Linux:
+> 💡 **Opsi Alternatif:** Anda juga dapat menggunakan perintah `bash`:
 > ```bash
-> bash "node joo.exe/setup_vps.sh"
+> bash node/setup_vps.sh
 > ```
 
 ---
