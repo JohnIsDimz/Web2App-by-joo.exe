@@ -314,41 +314,48 @@ export function subscribeUserProfile(uid: string, callback: (profile: UserProfil
 }
 
 /**
- * Helper to safely get user profile or construct fallback if offline
+ * Helper to safely get user profile or construct fallback instantly without blocking network delay
  */
 async function getUserProfileSafe(uid: string): Promise<UserProfileData> {
+  // 1. Instant 0ms return from local encrypted session cache
+  const fastSession = loadEncryptedUserSession(uid);
+  if (fastSession && typeof fastSession.balance === 'number') {
+    // Non-blocking background sync with Firestore
+    const userRef = doc(db, 'users', uid);
+    getDoc(userRef).then((snap) => {
+      if (snap.exists()) {
+        const remoteData = snap.data() as UserProfileData;
+        saveEncryptedUserSession(remoteData);
+      }
+    }).catch(() => {});
+    return fastSession;
+  }
+
+  // 2. Fallback to Firestore with 1.5s timeout race condition
   const userRef = doc(db, 'users', uid);
   try {
-    const snap = await getDoc(userRef);
-    if (snap.exists()) {
+    const fetchPromise = getDoc(userRef);
+    const timeoutPromise = new Promise<never>((_, reject) =>
+      setTimeout(() => reject(new Error('Firestore timeout')), 1500)
+    );
+
+    const snap = await Promise.race([fetchPromise, timeoutPromise]);
+    if (snap && snap.exists()) {
       const data = snap.data() as UserProfileData;
       if (data.tokens === undefined || data.tokens === null || typeof data.tokens !== 'number') {
         data.tokens = isAdminUser(data.email) ? 50000 : 10;
       }
-      try {
-        localStorage.setItem(`web2app_user_profile_${uid}`, JSON.stringify(data));
-      } catch (e) {}
+      saveEncryptedUserSession(data);
       return data;
     }
   } catch (err) {
-    console.warn("Firestore getDoc warning (falling back to cached profile):", err);
+    console.warn("Firestore getDoc warning (falling back to fast session cache):", err);
   }
-
-  // Try local storage cache before default fallback
-  try {
-    const cached = localStorage.getItem(`web2app_user_profile_${uid}`);
-    if (cached) {
-      const parsed = JSON.parse(cached);
-      if (parsed && typeof parsed.balance === 'number') {
-        return parsed;
-      }
-    }
-  } catch (e) {}
 
   // Fallback profile if offline or doc doesn't exist yet
   const currentUser = auth.currentUser;
   const isDevAdmin = isAdminUser(currentUser?.email);
-  return {
+  const fallback: UserProfileData = {
     uid: uid,
     email: currentUser?.email || 'user@example.com',
     displayName: currentUser?.displayName || (isDevAdmin ? 'Developer VIP Admin' : 'User'),
@@ -362,13 +369,14 @@ async function getUserProfileSafe(uid: string): Promise<UserProfileData> {
     createdAt: new Date().toISOString(),
     isAdmin: isDevAdmin
   };
+  saveEncryptedUserSession(fallback);
+  return fallback;
 }
 
 /**
  * Top Up / Deposit User Balance (Instant Real-time Payment)
  */
 export async function topUpBalance(uid: string, amount: number, paymentMethod: string): Promise<number> {
-  const userRef = doc(db, 'users', uid);
   const current = await getUserProfileSafe(uid);
   const newBalance = (current.balance || 0) + amount;
 
@@ -378,31 +386,23 @@ export async function topUpBalance(uid: string, amount: number, paymentMethod: s
     lastLogin: new Date().toISOString()
   };
 
-  // Cache immediately locally
-  try {
-    localStorage.setItem(`web2app_user_profile_${uid}`, JSON.stringify(updatedProfile));
-  } catch (e) {}
+  // Optimistic 0ms latency update
+  saveEncryptedUserSession(updatedProfile);
 
-  try {
-    await setDoc(userRef, {
-      balance: newBalance,
-      lastLogin: new Date().toISOString()
-    }, { merge: true });
-  } catch (err) {
-    console.warn("Firestore update balance offline warning:", err);
-  }
+  // Background async sync to Firestore & transaction history
+  const userRef = doc(db, 'users', uid);
+  setDoc(userRef, {
+    balance: newBalance,
+    lastLogin: new Date().toISOString()
+  }, { merge: true }).catch((err) => console.warn("Firestore topUp balance sync warning:", err));
 
-  try {
-    await recordTransaction(uid, {
-      userId: uid,
-      type: 'topup',
-      amount: amount,
-      description: `Deposit Saldo via ${paymentMethod} (+Rp ${amount.toLocaleString('id-ID')})`,
-      timestamp: new Date().toISOString()
-    });
-  } catch (err) {
-    console.warn("Record transaction offline warning:", err);
-  }
+  recordTransaction(uid, {
+    userId: uid,
+    type: 'topup',
+    amount: amount,
+    description: `Deposit Saldo via ${paymentMethod} (+Rp ${amount.toLocaleString('id-ID')})`,
+    timestamp: new Date().toISOString()
+  }).catch((err) => console.warn("Record transaction warning:", err));
 
   return newBalance;
 }

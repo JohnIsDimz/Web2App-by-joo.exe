@@ -4,7 +4,6 @@ import {
   Copy,
   Check,
   Download,
-  Terminal,
   FileCode,
   FileText,
   Smartphone,
@@ -202,6 +201,31 @@ export const CodeExportView: React.FC<CodeExportViewProps> = ({
     }, 5500);
   };
 
+  const handleDownloadApk = async () => {
+    const cleanName = (config.appName || 'Web2App').replace(/[^a-zA-Z0-9_-]/g, '_');
+    const targetUrl = serverDownloadUrl || `/api/build-apk?appName=${encodeURIComponent(config.appName || 'Web2App')}`;
+
+    try {
+      const response = await fetch(targetUrl);
+      if (response.ok) {
+        const blob = await response.blob();
+        const apkBlob = new Blob([blob], { type: 'application/vnd.android.package-archive' });
+        const url = URL.createObjectURL(apkBlob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `${cleanName}-release.apk`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        setTimeout(() => URL.revokeObjectURL(url), 1000);
+      } else {
+        window.location.href = targetUrl;
+      }
+    } catch (err) {
+      window.location.href = targetUrl;
+    }
+  };
+
   return (
     <div className="space-y-6">
       {/* Top Banner & Direct Export Callout */}
@@ -334,14 +358,13 @@ export const CodeExportView: React.FC<CodeExportViewProps> = ({
               </div>
 
               <div className="flex items-center gap-2 flex-wrap">
-                <a
-                  href={serverDownloadUrl || `/api/build-apk?appName=${encodeURIComponent(config.appName || 'Web2App')}`}
-                  download={`${(config.appName || 'app').replace(/[^a-zA-Z0-9_-]/g, '_')}-release.apk`}
+                <button
+                  onClick={handleDownloadApk}
                   className="px-4 py-2.5 bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-400 hover:to-teal-500 text-white font-bold text-xs rounded-xl shadow-lg shadow-emerald-500/30 flex items-center gap-2 shrink-0 transition-all active:scale-95"
                 >
                   <Smartphone className="w-4 h-4 text-emerald-200" />
                   <span>Download APK (.apk)</span>
-                </a>
+                </button>
 
                 <button
                   onClick={onExportZip}
@@ -401,31 +424,6 @@ export const CodeExportView: React.FC<CodeExportViewProps> = ({
           <pre className="text-xs font-mono text-slate-300 leading-relaxed">
             <code>{getFileContent()}</code>
           </pre>
-        </div>
-      </div>
-
-      {/* Flutter CLI Instructions Card */}
-      <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6 shadow-xl">
-        <h4 className="text-base font-bold text-white flex items-center gap-2 mb-3">
-          <Terminal className="w-5 h-5 text-emerald-400" />
-          <span>Cara Kompilasi & Jalankan Di Terminal Flutter</span>
-        </h4>
-
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 font-mono text-xs">
-          <div className="p-3.5 bg-slate-950 border border-slate-800 rounded-xl">
-            <span className="text-emerald-400 font-bold block mb-1">1. Install Dependencies</span>
-            <code className="text-slate-300">flutter pub get</code>
-          </div>
-
-          <div className="p-3.5 bg-slate-950 border border-slate-800 rounded-xl">
-            <span className="text-sky-400 font-bold block mb-1">2. Jalankan Mode Simulator</span>
-            <code className="text-slate-300">flutter run</code>
-          </div>
-
-          <div className="p-3.5 bg-slate-950 border border-slate-800 rounded-xl">
-            <span className="text-purple-400 font-bold block mb-1">3. Build APK Release</span>
-            <code className="text-slate-300">flutter build apk --release</code>
-          </div>
         </div>
       </div>
     </div>
