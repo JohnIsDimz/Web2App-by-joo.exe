@@ -15,6 +15,7 @@ import { AppConfig, WebSiteAnalysis } from './types';
 import { downloadFlutterProjectZip } from './utils/zipExporter';
 import { onAuthChange, subscribeUserProfile, saveUserProfile, isAdminUser, UserProfileData, DEMO_USER_PROFILE, deductToken } from './lib/firebase';
 import { syncConfigToSqlDatabase } from './lib/sqlDatabase';
+import { loadEncryptedUserSession } from './lib/cookieSecurity';
 
 const DEFAULT_CONFIG: AppConfig = {
   id: 'default-app',
@@ -89,7 +90,17 @@ const DEFAULT_CONFIG: AppConfig = {
 export default function App() {
   const [activeTab, setActiveTab] = useState<'simulator' | 'config' | 'export'>('simulator');
   const [currentUser, setCurrentUser] = useState<User | null>(null);
-  const [userProfile, setUserProfile] = useState<UserProfileData | null>(null);
+  const [userProfile, setUserProfile] = useState<UserProfileData | null>(() => loadEncryptedUserSession());
+
+  useEffect(() => {
+    const handleProfileUpdated = (e: any) => {
+      if (e.detail) {
+        setUserProfile(e.detail);
+      }
+    };
+    window.addEventListener('w2a_profile_updated', handleProfileUpdated);
+    return () => window.removeEventListener('w2a_profile_updated', handleProfileUpdated);
+  }, []);
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
   const [isWalletModalOpen, setIsWalletModalOpen] = useState(false);
   const [isSecurityModalOpen, setIsSecurityModalOpen] = useState(false);

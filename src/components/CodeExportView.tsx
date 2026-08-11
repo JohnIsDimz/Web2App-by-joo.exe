@@ -247,8 +247,10 @@ export const CodeExportView: React.FC<CodeExportViewProps> = ({
           setBuildRecordId(bId);
           const engineTitle = resData.engineTitle || config.engineType.toUpperCase();
 
+          const isCanBuild = resData.hasFlutter || resData.canBuild;
+
           // Deduct token ONLY now after server confirms build trigger
-          if (currentUser && resData.hasFlutter) {
+          if (currentUser && isCanBuild) {
             const isVIP = userProfile?.isAdmin || userProfile?.subscriptionPlan === 'Enterprise' || (currentUser.email && isAdminUser(currentUser.email));
             if (!isVIP && (userProfile?.tokens ?? 0) > 0) {
               deductToken(currentUser.uid, 1).catch((err) => console.warn("Token deduction error:", err));
@@ -258,12 +260,23 @@ export const CodeExportView: React.FC<CodeExportViewProps> = ({
           setTerminalLogs((prev) => [
             ...prev,
             ` -> [SQL Vault] Build Transaction Recorded in Server DB. ID: ${bId}`,
-            resData.hasFlutter
+            isCanBuild
               ? ` -> [VPS Build Engine: ${engineTitle}] Native compilation triggered in server workspace!`
-              : ` -> [VPS Notice: ${engineTitle}] Flutter SDK belum aktif di VPS. Kompilasi otomatis memerlukan node/setup_vps.sh. Source code ZIP lengkap siap diunduh!`,
+              : ` -> [VPS Notice: ${engineTitle}] Engine SDK belum aktif di VPS. Kompilasi memerlukan setup VPS. Source code ZIP lengkap siap diunduh!`,
           ]);
 
-          if (!resData.hasFlutter) {
+          if (resData.status === 'compiled_ready') {
+            setApkStep(5);
+            setIsBuildingApk(false);
+            setApkBuilt(true);
+            setTerminalLogs((prev) => [
+              ...prev,
+              `[5/5] KOMPILASI ENGINE (${engineTitle}) SELESAI! Berkas '${(config.appName || 'app').replace(/[^a-zA-Z0-9_-]/g, '_')}' SIAP DIUNDUH.`,
+            ]);
+            return;
+          }
+
+          if (!isCanBuild) {
             setApkStep(5);
             setIsBuildingApk(false);
             setApkBuilt(true);

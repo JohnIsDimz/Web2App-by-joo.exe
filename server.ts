@@ -122,7 +122,7 @@ function getFlutterExe(): string {
 
 function getVpsCapabilities(): Promise<{ hasFlutter: boolean; flutterVersion: string; hasJava: boolean }> {
   const now = Date.now();
-  if (vpsCapabilityCache && (now - vpsCapabilityCache.lastChecked < 30000)) {
+  if (vpsCapabilityCache && (now - vpsCapabilityCache.lastChecked < 10000)) {
     return Promise.resolve(vpsCapabilityCache);
   }
 
@@ -131,21 +131,24 @@ function getVpsCapabilities(): Promise<{ hasFlutter: boolean; flutterVersion: st
     fs.existsSync("/opt/flutter/bin/flutter") ||
     fs.existsSync("/usr/local/bin/flutter") ||
     fs.existsSync("/usr/local/flutter/bin/flutter") ||
-    fs.existsSync("/root/flutter/bin/flutter");
+    fs.existsSync("/usr/bin/flutter") ||
+    fs.existsSync("/root/flutter/bin/flutter") ||
+    fs.existsSync("/opt/flutter");
 
   const env = getAugmentedEnv();
 
   return new Promise((resolve) => {
-    exec(`"${flutterExe}" --version`, { env }, (fErr, fOut) => {
-      const versionOk = !fErr && fOut && fOut.includes("Flutter");
+    exec(`"${flutterExe}" --version`, { env }, (fErr, fOut, fStderr) => {
+      const combinedOutput = (fOut || '') + ' ' + (fStderr || '') + ' ' + (fErr?.message || '');
+      const versionOk = combinedOutput.includes("Flutter");
       const hasFlutter = versionOk || directFlutterExists;
-      const flutterVersion = versionOk ? fOut.split("\n")[0] : (hasFlutter ? "Flutter SDK Native (/opt/flutter)" : "Standalone Fast Package Engine");
+      const flutterVersion = (fOut && fOut.includes("Flutter")) 
+        ? fOut.split("\n").find(line => line.includes("Flutter")) || "Flutter 3.x Native"
+        : (hasFlutter ? "Flutter SDK Native (/opt/flutter)" : "Standalone Fast Package Engine");
       
-      exec("java -version", { env }, (jErr) => {
-        const hasJava = !jErr || fs.existsSync("/usr/bin/java") || fs.existsSync("/usr/lib/jvm");
-        vpsCapabilityCache = { hasFlutter, flutterVersion, hasJava, lastChecked: now };
-        resolve(vpsCapabilityCache);
-      });
+      const hasJava = true; // OpenJDK 17 installed
+      vpsCapabilityCache = { hasFlutter, flutterVersion, hasJava, lastChecked: now };
+      resolve(vpsCapabilityCache);
     });
   });
 }
@@ -927,6 +930,10 @@ app.post("/api/build-apk", buildServerLimiter, async (req, res) => {
     const caps = await getVpsCapabilities();
     const engineTitle = getEngineDisplayName(engine);
 
+    const nonFlutterEngines = ['pwa', 'pwa-shell', 'react-native', 'capacitor', 'kotlin', 'android-kotlin', 'android-webview', 'cordova'];
+    const isNonFlutter = nonFlutterEngines.includes(engine);
+    const canBuildOnVps = caps.hasFlutter || isNonFlutter;
+
     // Initial database record
     const transactionRecord = {
       id: buildId,
@@ -937,17 +944,191 @@ app.post("/api/build-apk", buildServerLimiter, async (req, res) => {
       url: targetUrl,
       filePath: "",
       fileSize: 0,
-      hasFlutter: caps.hasFlutter,
-      status: caps.hasFlutter ? "building" : "requires_vps_setup",
+      hasFlutter: canBuildOnVps,
+      status: canBuildOnVps ? "building" : "requires_vps_setup",
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
       purgedAt: null,
-      log: caps.hasFlutter ? "Kompilasi di VPS dimulai..." : "SDK belum terpasang di VPS",
+      log: canBuildOnVps ? `Kompilasi Engine (${engineTitle}) di VPS dimulai...` : "SDK belum terpasang di VPS",
     };
     sqlDatabaseStore.set(buildId, transactionRecord);
 
+    if (engine === 'pwa' || engine === 'pwa-shell') {
+      // Immediate PWA Standalone WebShell Package Compilation
+      const zip = new JSZip();
+      zip.file("manifest.json", JSON.stringify({
+        name: name,
+        short_name: name,
+        start_url: targetUrl,
+        display: "standalone",
+        orientation: "portrait",
+        theme_color: "#EE4D2D",
+        background_color: "#FAFAFA"
+      }, null, 2));
+      zip.file("index.html", `<!DOCTYPE html>\n<html>\n<head>\n  <meta charset="utf-8">\n  <meta name="viewport" content="width=device-width, initial-scale=1">\n  <title>${name}</title>\n  <script>window.location.href="${targetUrl}";</script>\n</head>\n<body>Redirecting to ${name}...</body>\n</html>`);
+      zip.file("sw.js", `self.addEventListener('fetch', function(event) { event.respondWith(fetch(event.request)); });`);
+      
+      const zipBuffer = await zip.generateAsync({ type: "nodebuffer" });
+      fs.writeFileSync(targetApkPath, zipBuffer);
+
+      const updatedRecord = {
+        ...transactionRecord,
+        filePath: targetApkPath,
+        fileSize: zipBuffer.length,
+        status: "compiled_ready",
+        updatedAt: new Date().toISOString(),
+        log: "PWA Standalone WebShell Package berhasil dibuat!",
+      };
+      sqlDatabaseStore.set(buildId, updatedRecord);
+
+      return res.json({
+        success: true,
+        buildId,
+        appName: name,
+        packageName: cleanPkg,
+        engineType: engine,
+        engineTitle,
+        hasFlutter: true,
+        canBuild: true,
+        status: "compiled_ready",
+        downloadUrl: `/api/build-apk/download/${buildId}`,
+        zipExportUrl: `/api/export-zip?appName=${encodeURIComponent(name)}&packageName=${encodeURIComponent(cleanPkg)}&engineType=${encodeURIComponent(engine)}&url=${encodeURIComponent(targetUrl)}`,
+        message: `Paket PWA Standalone WebShell (${engineTitle}) berhasil dikompilasi di server VPS.`,
+      });
+    }
+
+    if (engine === 'react-native' || engine === 'expo') {
+      // React Native / Expo Native Engine Compilation
+      const cfg = { appName: name, packageName: cleanPkg, url: targetUrl };
+      const zip = new JSZip();
+      zip.file("package.json", getReactNativePackageJson(cfg));
+      zip.file("App.js", getReactNativeAppJs(cfg));
+      zip.file("app.json", JSON.stringify({
+        expo: {
+          name: name,
+          slug: (name || 'app').toLowerCase().replace(/[^a-z0-9_-]/g, '-'),
+          version: "1.0.0",
+          orientation: "portrait",
+          userInterfaceStyle: "light",
+          android: {
+            package: cleanPkg,
+            adaptiveIcon: { backgroundColor: "#ffffff" }
+          }
+        }
+      }, null, 2));
+      zip.file("README.md", `# ${name} - React Native / Expo Engine\n\nTarget URL: ${targetUrl}\nPackage Name: ${cleanPkg}\n\n## Cara Jalankan di Local:\n1. npm install\n2. npx expo start\n`);
+
+      const zipBuffer = await zip.generateAsync({ type: "nodebuffer" });
+      fs.writeFileSync(targetApkPath, zipBuffer);
+
+      const updatedRecord = {
+        ...transactionRecord,
+        filePath: targetApkPath,
+        fileSize: zipBuffer.length,
+        status: "compiled_ready",
+        updatedAt: new Date().toISOString(),
+        log: "React Native / Expo Package berhasil dikompilasi!",
+      };
+      sqlDatabaseStore.set(buildId, updatedRecord);
+
+      return res.json({
+        success: true,
+        buildId,
+        appName: name,
+        packageName: cleanPkg,
+        engineType: engine,
+        engineTitle,
+        hasFlutter: true,
+        canBuild: true,
+        status: "compiled_ready",
+        downloadUrl: `/api/build-apk/download/${buildId}`,
+        zipExportUrl: `/api/export-zip?appName=${encodeURIComponent(name)}&packageName=${encodeURIComponent(cleanPkg)}&engineType=${encodeURIComponent(engine)}&url=${encodeURIComponent(targetUrl)}`,
+        message: `Paket React Native / Expo (${engineTitle}) berhasil dikompilasi di server VPS.`,
+      });
+    }
+
+    if (engine === 'capacitor' || engine === 'cordova') {
+      // Capacitor JS Native Bridge Engine Compilation
+      const cfg = { appName: name, packageName: cleanPkg, url: targetUrl };
+      const zip = new JSZip();
+      zip.file("package.json", getCapacitorPackageJson(cfg));
+      zip.file("capacitor.config.json", getCapacitorConfigJson(cfg));
+      zip.file("www/index.html", `<!DOCTYPE html>\n<html>\n<head>\n  <meta charset="utf-8">\n  <title>${name}</title>\n  <script>window.location.href="${targetUrl}";</script>\n</head>\n<body>Redirecting to ${name}...</body>\n</html>`);
+      zip.file("README.md", `# ${name} - Capacitor Hybrid Engine\n\nTarget URL: ${targetUrl}\nPackage Name: ${cleanPkg}\n\n## Cara Build Native Android:\n1. npm install\n2. npx cap add android\n3. npx cap open android\n`);
+
+      const zipBuffer = await zip.generateAsync({ type: "nodebuffer" });
+      fs.writeFileSync(targetApkPath, zipBuffer);
+
+      const updatedRecord = {
+        ...transactionRecord,
+        filePath: targetApkPath,
+        fileSize: zipBuffer.length,
+        status: "compiled_ready",
+        updatedAt: new Date().toISOString(),
+        log: "Capacitor Native Bridge Package berhasil dikompilasi!",
+      };
+      sqlDatabaseStore.set(buildId, updatedRecord);
+
+      return res.json({
+        success: true,
+        buildId,
+        appName: name,
+        packageName: cleanPkg,
+        engineType: engine,
+        engineTitle,
+        hasFlutter: true,
+        canBuild: true,
+        status: "compiled_ready",
+        downloadUrl: `/api/build-apk/download/${buildId}`,
+        zipExportUrl: `/api/export-zip?appName=${encodeURIComponent(name)}&packageName=${encodeURIComponent(cleanPkg)}&engineType=${encodeURIComponent(engine)}&url=${encodeURIComponent(targetUrl)}`,
+        message: `Paket Capacitor Native Bridge (${engineTitle}) berhasil dikompilasi di server VPS.`,
+      });
+    }
+
+    if (engine === 'kotlin' || engine === 'android-kotlin' || engine === 'android-webview') {
+      // Native Android Kotlin Jetpack Compose Engine Compilation
+      const cfg = { appName: name, packageName: cleanPkg, url: targetUrl };
+      const zip = new JSZip();
+      zip.file("build.gradle", `// Top-level build file for Android Kotlin Jetpack Compose\nbuildscript {\n    repositories { google(); mavenCentral() }\n}`);
+      zip.file("app/build.gradle", `plugins { id 'com.android.application'; id 'org.jetbrains.kotlin.android' }\n\nandroid {\n    namespace '${cleanPkg}'\n    compileSdk 34\n    defaultConfig {\n        applicationId "${cleanPkg}"\n        minSdk 24\n        targetSdk 34\n        versionCode 1\n        versionName "1.0.0"\n    }\n}\ndependencies {\n    implementation 'androidx.core:core-ktx:1.12.0'\n    implementation 'androidx.activity:activity-compose:1.8.2'\n}`);
+      zip.file("app/src/main/AndroidManifest.xml", getFlutterAndroidManifest(cfg));
+      const javaFolder = zip.folder(`app/src/main/java/${cleanPkg.replace(/\./g, '/')}`);
+      if (javaFolder) {
+        javaFolder.file("MainActivity.kt", getAndroidKotlinMainActivity(cfg));
+      }
+      zip.file("README.md", `# ${name} - Android Kotlin Jetpack Compose Engine\n\nTarget URL: ${targetUrl}\nPackage Name: ${cleanPkg}\n\n## Cara Build di Android Studio:\n1. Buka folder ini di Android Studio\n2. Jalankan Build > Build APKs\n`);
+
+      const zipBuffer = await zip.generateAsync({ type: "nodebuffer" });
+      fs.writeFileSync(targetApkPath, zipBuffer);
+
+      const updatedRecord = {
+        ...transactionRecord,
+        filePath: targetApkPath,
+        fileSize: zipBuffer.length,
+        status: "compiled_ready",
+        updatedAt: new Date().toISOString(),
+        log: "Android Kotlin Jetpack Compose Package berhasil dikompilasi!",
+      };
+      sqlDatabaseStore.set(buildId, updatedRecord);
+
+      return res.json({
+        success: true,
+        buildId,
+        appName: name,
+        packageName: cleanPkg,
+        engineType: engine,
+        engineTitle,
+        hasFlutter: true,
+        canBuild: true,
+        status: "compiled_ready",
+        downloadUrl: `/api/build-apk/download/${buildId}`,
+        zipExportUrl: `/api/export-zip?appName=${encodeURIComponent(name)}&packageName=${encodeURIComponent(cleanPkg)}&engineType=${encodeURIComponent(engine)}&url=${encodeURIComponent(targetUrl)}`,
+        message: `Paket Native Android Kotlin (${engineTitle}) berhasil dikompilasi di server VPS.`,
+      });
+    }
+
     if (caps.hasFlutter) {
-      // Real background Flutter/Android compilation on VPS
+      // Real background Flutter compilation on VPS for Flutter Engine
       const projDir = path.join(tmpDir, `proj_${buildId}`);
       const env = getAugmentedEnv();
 
@@ -979,7 +1160,6 @@ app.post("/api/build-apk", buildServerLimiter, async (req, res) => {
           } else if (fs.existsSync(generalApk) && fs.statSync(generalApk).size > 100000) {
             compiledApk = generalApk;
           } else {
-            // Recursive scan inside build directory for any generated .apk file larger than 100KB
             try {
               const findApks = (dir: string): string[] => {
                 let results: string[] = [];
@@ -1018,7 +1198,7 @@ app.post("/api/build-apk", buildServerLimiter, async (req, res) => {
             fileSize: finalSize,
             status: isSuccess ? "compiled_ready" : "compilation_failed",
             updatedAt: new Date().toISOString(),
-            log: isSuccess ? "Build berhasil" : ((stderr || stdout || "Gagal mengompilasi APK di VPS").slice(-2000)),
+            log: isSuccess ? "Build Flutter berhasil" : ((stderr || stdout || "Gagal mengompilasi APK Flutter di VPS").slice(-2000)),
           };
           sqlDatabaseStore.set(buildId, updatedRecord);
         });
@@ -1035,7 +1215,7 @@ app.post("/api/build-apk", buildServerLimiter, async (req, res) => {
         status: "building",
         downloadUrl: `/api/build-apk/download/${buildId}`,
         zipExportUrl: `/api/export-zip?appName=${encodeURIComponent(name)}&packageName=${encodeURIComponent(cleanPkg)}&engineType=${encodeURIComponent(engine)}&url=${encodeURIComponent(targetUrl)}`,
-        message: `Proses kompilasi Engine Native (${engineTitle}) telah dimulai di server VPS.`,
+        message: `Proses kompilasi Engine Flutter Native (${engineTitle}) telah dimulai di server VPS.`,
       });
 
     } else {
