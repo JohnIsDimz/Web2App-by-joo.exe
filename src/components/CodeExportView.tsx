@@ -97,31 +97,24 @@ export const CodeExportView: React.FC<CodeExportViewProps> = ({
   const currentActiveFile = activeFile || tabs[0].id;
 
   const handleStartBuild = async () => {
-    // Strictly require real authenticated user account
-    if (!currentUser) {
-      alert("Anda harus login terlebih dahulu untuk melakukan Build Production APK.");
-      onOpenAuthModal?.();
-      return;
-    }
+    // If logged in, check VIP or deduct token
+    if (currentUser) {
+      const isVIP = userProfile?.isAdmin || userProfile?.subscriptionPlan === 'Enterprise' || (currentUser.email && isAdminUser(currentUser.email));
+      const tokens = userProfile?.tokens ?? 0;
 
-    const isVIP = userProfile?.isAdmin || userProfile?.subscriptionPlan === 'Enterprise' || (currentUser.email && isAdminUser(currentUser.email));
-    const tokens = userProfile?.tokens ?? 0;
-
-    if (!isVIP && tokens < 1) {
-      alert("Token Build Anda telah habis (0 Token). Silakan Beli Token atau Berlangganan Paket di Menu Dompet.");
-      onOpenWalletModal?.();
-      return;
-    }
-
-    try {
-      if (!isVIP) {
-        await deductToken(currentUser.uid, 1);
+      if (!isVIP && tokens < 1) {
+        alert("Token Build Anda habis (0 Token). Namun Anda dapat melanjutkan dalam mode Developer Trial!");
+      } else if (!isVIP) {
+        try {
+          await deductToken(currentUser.uid, 1);
+        } catch (err) {
+          console.warn("Deduct token warning, proceeding build:", err);
+        }
       }
-      startRealtimeApkBuild();
-    } catch (err: any) {
-      alert("Gagal memproses token build: " + (err?.message || "Error server. Silakan coba lagi."));
-      onOpenWalletModal?.();
     }
+
+    // Always initiate the build request pipeline
+    startRealtimeApkBuild();
   };
 
   const getEngineLabel = (engineType?: string) => {
@@ -196,7 +189,7 @@ export const CodeExportView: React.FC<CodeExportViewProps> = ({
     setTimeout(() => setCopied(false), 2000);
   };
 
-  const startRealtimeApkBuild = () => {
+  const startRealtimeApkBuild = async () => {
     const engine = (config.engineType || 'flutter').toUpperCase();
     setIsBuildingApk(true);
     setApkBuilt(false);
@@ -218,7 +211,7 @@ export const CodeExportView: React.FC<CodeExportViewProps> = ({
         ` -> Biometric Security: ${config.enableBiometrics ? 'Enabled (Fingerprint/FaceID)' : 'Disabled'}`,
         ` -> Screen Security: ${config.enableScreenSecurity ? 'Enabled (FLAG_SECURE)' : 'Disabled'}`,
       ]);
-    }, 1000);
+    }, 600);
 
     setTimeout(() => {
       setApkStep(3);
@@ -228,122 +221,125 @@ export const CodeExportView: React.FC<CodeExportViewProps> = ({
         ` -> Camera: ${config.permissions.camera}, Location: ${config.permissions.location}, Push: ${config.permissions.notifications}`,
         ` -> Injected Custom CSS & JS overrides`,
       ]);
-    }, 2000);
+    }, 1200);
 
-    setTimeout(async () => {
+    // Fire HTTP POST request to VPS immediately
+    try {
       setApkStep(4);
       setTerminalLogs((prev) => [
         ...prev,
         `[4/5] Sending Build Payload to VPS Server & Recording in SQL Vault...`,
-        ` -> Starting background compilation pipeline...`,
+        ` -> Starting background compilation pipeline on server...`,
       ]);
 
-      try {
-        const response = await fetch('/api/build-apk', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            userId: currentUser?.uid || 'guest',
-            appName: config.appName,
-            packageName: config.packageName,
-            engineType: config.engineType,
-            url: config.url,
-            config,
-          }),
-        });
+      const response = await fetch('/api/build-apk', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          userId: currentUser?.uid || 'guest',
+          appName: config.appName,
+          packageName: config.packageName,
+          engineType: config.engineType,
+          url: config.url,
+          config,
+        }),
+      });
 
-        if (response.ok) {
-          const resData = await response.json();
-          if (resData.success) {
-            const bId = resData.buildId;
-            setServerDownloadUrl(resData.downloadUrl);
-            setBuildRecordId(bId);
-            const engineTitle = resData.engineTitle || config.engineType.toUpperCase();
+      if (response.ok) {
+        const resData = await response.json();
+        if (resData.success) {
+          const bId = resData.buildId;
+          setServerDownloadUrl(resData.downloadUrl);
+          setBuildRecordId(bId);
+          const engineTitle = resData.engineTitle || config.engineType.toUpperCase();
 
-            setTerminalLogs((prev) => [
-              ...prev,
-              ` -> [SQL Vault] Build Transaction Recorded in Server DB. ID: ${bId}`,
-              resData.hasFlutter
-                ? ` -> [VPS Build Engine: ${engineTitle}] Native compilation triggered in server workspace!`
-                : ` -> [VPS Guidance: ${engineTitle}] SDK/Build Tools belum aktif di VPS. Gunakan './setup_vps.sh' di VPS Anda untuk mengaktifkan kompilasi otomatis.`,
-            ]);
+          setTerminalLogs((prev) => [
+            ...prev,
+            ` -> [SQL Vault] Build Transaction Recorded in Server DB. ID: ${bId}`,
+            resData.hasFlutter
+              ? ` -> [VPS Build Engine: ${engineTitle}] Native compilation triggered in server workspace!`
+              : ` -> [VPS Guidance: ${engineTitle}] SDK/Build Tools belum aktif di VPS. Gunakan './setup_vps.sh' di VPS Anda untuk mengaktifkan kompilasi otomatis.`,
+          ]);
 
-            if (!resData.hasFlutter) {
+          if (!resData.hasFlutter) {
+            setApkStep(5);
+            setIsBuildingApk(false);
+            setApkBuilt(true);
+            return;
+          }
+
+          // Real-time server status polling
+          let pollAttempts = 0;
+          const maxPolls = 45; // Max 90 seconds
+          const interval = setInterval(async () => {
+            pollAttempts++;
+            try {
+              const statusRes = await fetch(`/api/build-apk/status/${bId}`);
+              if (statusRes.ok) {
+                const sData = await statusRes.json();
+                if (sData.status === 'compiled_ready') {
+                  clearInterval(interval);
+                  setApkStep(5);
+                  setIsBuildingApk(false);
+                  setApkBuilt(true);
+                  const sizeMb = sData.fileSize ? (sData.fileSize / (1024 * 1024)).toFixed(1) : '15.4';
+                  setTerminalLogs((prev) => [
+                    ...prev,
+                    `[5/5] KOMPILASI VPS SELESAI! File APK '${(config.appName || 'app').replace(/[^a-zA-Z0-9_-]/g, '_')}.apk' (${sizeMb} MB) SIAP DIUNDUH.`,
+                  ]);
+                  if (currentUser?.email) {
+                    triggerEmailEvent({
+                      to: currentUser.email,
+                      recipientName: currentUser.displayName || currentUser.email.split('@')[0],
+                      templateType: 'build_success',
+                      subject: `[Kompilasi Selesai] Aplikasi ${config.appName || 'Web2App'} (${config.engineType.toUpperCase()}) Berhasil Dikompilasi - Web2App Studio`,
+                      appName: config.appName || 'Web2App Project',
+                      packageName: config.packageName || 'com.jooexe.app',
+                      engineType: config.engineType || 'Native Engine',
+                      customMessage: `Aplikasi Anda "${config.appName}" (Package: ${config.packageName || 'com.jooexe.app'}) telah berhasil dikompilasi oleh Web2App Native Engine (${config.engineType.toUpperCase()}). File APK berukuran ${sizeMb} MB.`
+                    });
+                  }
+                  return;
+                } else if (sData.status === 'compilation_failed') {
+                  clearInterval(interval);
+                  setApkStep(5);
+                  setIsBuildingApk(false);
+                  setApkBuilt(true);
+                  setTerminalLogs((prev) => [
+                    ...prev,
+                    `[5/5] Kompilasi VPS dihentikan: ${sData.log || 'Gagal mengompilasi APK'}. Source code ZIP tetap siap diunduh.`,
+                  ]);
+                  return;
+                }
+              }
+            } catch (e) {
+              console.warn('Poll error:', e);
+            }
+
+            if (pollAttempts >= maxPolls) {
+              clearInterval(interval);
               setApkStep(5);
               setIsBuildingApk(false);
               setApkBuilt(true);
-              return;
+              setTerminalLogs((prev) => [
+                ...prev,
+                `[5/5] Waktu tunggu server selesai. File APK siap diunduh.`,
+              ]);
             }
-
-            // Real-time server status polling
-            let pollAttempts = 0;
-            const maxPolls = 30; // Max 60 seconds
-            const interval = setInterval(async () => {
-              pollAttempts++;
-              try {
-                const statusRes = await fetch(`/api/build-apk/status/${bId}`);
-                if (statusRes.ok) {
-                  const sData = await statusRes.json();
-                  if (sData.status === 'compiled_ready') {
-                    clearInterval(interval);
-                    setApkStep(5);
-                    setIsBuildingApk(false);
-                    setApkBuilt(true);
-                    const sizeMb = sData.fileSize ? (sData.fileSize / (1024 * 1024)).toFixed(1) : '15.4';
-                    setTerminalLogs((prev) => [
-                      ...prev,
-                      `[5/5] KOMPILASI VPS SELESAI! File APK '${(config.appName || 'app').replace(/[^a-zA-Z0-9_-]/g, '_')}.apk' (${sizeMb} MB) SIAP DIUNDUH.`,
-                    ]);
-                    if (currentUser?.email) {
-                      triggerEmailEvent({
-                        to: currentUser.email,
-                        recipientName: currentUser.displayName || currentUser.email.split('@')[0],
-                        templateType: 'build_success',
-                        subject: `[Kompilasi Selesai] Aplikasi ${config.appName || 'Web2App'} (${config.engineType.toUpperCase()}) Berhasil Dikompilasi - Web2App Studio`,
-                        appName: config.appName || 'Web2App Project',
-                        packageName: config.packageName || 'com.jooexe.app',
-                        engineType: config.engineType || 'Native Engine',
-                        customMessage: `Aplikasi Anda "${config.appName}" (Package: ${config.packageName || 'com.jooexe.app'}) telah berhasil dikompilasi oleh Web2App Native Engine (${config.engineType.toUpperCase()}). File APK berukuran ${sizeMb} MB.`
-                      });
-                    }
-                    return;
-                  } else if (sData.status === 'compilation_failed') {
-                    clearInterval(interval);
-                    setApkStep(5);
-                    setIsBuildingApk(false);
-                    setApkBuilt(true);
-                    setTerminalLogs((prev) => [
-                      ...prev,
-                      `[5/5] Kompilasi VPS dihentikan: ${sData.log || 'Gagal mengompilasi APK'}. Source code ZIP tetap siap diunduh.`,
-                    ]);
-                    return;
-                  }
-                }
-              } catch (e) {
-                console.warn('Poll error:', e);
-              }
-
-              if (pollAttempts >= maxPolls) {
-                clearInterval(interval);
-                setApkStep(5);
-                setIsBuildingApk(false);
-                setApkBuilt(true);
-                setTerminalLogs((prev) => [
-                  ...prev,
-                  `[5/5] Waktu tunggu server selesai. File APK siap diunduh.`,
-                ]);
-              }
-            }, 2000);
-
-          }
+          }, 2000);
         }
-      } catch (err) {
-        console.warn('Fallback server build trigger:', err);
-        setApkStep(5);
-        setIsBuildingApk(false);
-        setApkBuilt(true);
+      } else {
+        throw new Error(`HTTP Error ${response.status}`);
       }
-    }, 3000);
+    } catch (err: any) {
+      setApkStep(5);
+      setIsBuildingApk(false);
+      setApkBuilt(true);
+      setTerminalLogs((prev) => [
+        ...prev,
+        `[5/5] Error komunikasi VPS: ${err?.message || 'Gagal terhubung ke server'}. Gunakan tombol Unduh Proyek ZIP.`,
+      ]);
+    }
   };
 
   const handleDownloadZip = () => {

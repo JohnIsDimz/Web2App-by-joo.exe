@@ -625,7 +625,7 @@ function getFlutterAndroidManifest(cfg: any): string {
 
     <application
         android:label="${label}"
-        android:name="\${applicationName}"
+        android:name="io.flutter.app.FlutterApplication"
         android:icon="@mipmap/ic_launcher"
         android:usesCleartextTraffic="true">
         <activity
@@ -905,8 +905,8 @@ app.post("/api/build-apk", async (req, res) => {
       const orgName = cleanPkg.split('.').slice(0, -1).join('.') || 'com.jooexe';
       const projName = (cleanPkg.split('.').pop() || 'app').replace(/[^a-z0-9_]/g, '_').replace(/^([0-9])/, 'app_$1');
 
-      // Create standard Flutter project scaffolding via flutter create
-      exec(`flutter create --template=app --org "${orgName}" --project-name "${projName}" "${projDir}"`, { env }, (_cErr) => {
+      // Create standard Flutter project scaffolding via flutter create with expanded maxBuffer
+      exec(`flutter create --template=app --org "${orgName}" --project-name "${projName}" "${projDir}"`, { env, maxBuffer: 1024 * 1024 * 50 }, (_cErr) => {
         fs.mkdirSync(path.join(projDir, "lib"), { recursive: true });
         fs.mkdirSync(path.join(projDir, "android/app/src/main"), { recursive: true });
 
@@ -915,7 +915,7 @@ app.post("/api/build-apk", async (req, res) => {
         fs.writeFileSync(path.join(projDir, "lib/main.dart"), getFlutterMainDart(cfg));
         fs.writeFileSync(path.join(projDir, "android/app/src/main/AndroidManifest.xml"), getFlutterAndroidManifest(cfg));
 
-        exec(`cd "${projDir}" && flutter pub get && flutter build apk --release --no-tree-shake-icons`, { env }, (err, stdout, stderr) => {
+        exec(`cd "${projDir}" && flutter pub get && flutter build apk --release --no-tree-shake-icons`, { env, maxBuffer: 1024 * 1024 * 50 }, (err, stdout, stderr) => {
           const releaseApk = path.join(projDir, "build/app/outputs/flutter-apk/app-release.apk");
           const debugApk = path.join(projDir, "build/app/outputs/flutter-apk/app-debug.apk");
           const generalApk = path.join(projDir, "build/app/outputs/apk/release/app-release.apk");
@@ -927,6 +927,29 @@ app.post("/api/build-apk", async (req, res) => {
             compiledApk = debugApk;
           } else if (fs.existsSync(generalApk) && fs.statSync(generalApk).size > 100000) {
             compiledApk = generalApk;
+          } else {
+            // Recursive scan inside build directory for any generated .apk file larger than 100KB
+            try {
+              const findApks = (dir: string): string[] => {
+                let results: string[] = [];
+                if (!fs.existsSync(dir)) return results;
+                const list = fs.readdirSync(dir);
+                for (const file of list) {
+                  const fullPath = path.join(dir, file);
+                  const stat = fs.statSync(fullPath);
+                  if (stat && stat.isDirectory()) {
+                    results = results.concat(findApks(fullPath));
+                  } else if (file.endsWith(".apk") && stat.size > 100000) {
+                    results.push(fullPath);
+                  }
+                }
+                return results;
+              };
+              const scannedApks = findApks(path.join(projDir, "build"));
+              if (scannedApks.length > 0) {
+                compiledApk = scannedApks[0];
+              }
+            } catch (_e) {}
           }
 
           let finalSize = 0;
@@ -944,7 +967,7 @@ app.post("/api/build-apk", async (req, res) => {
             fileSize: finalSize,
             status: isSuccess ? "compiled_ready" : "compilation_failed",
             updatedAt: new Date().toISOString(),
-            log: isSuccess ? "Build berhasil" : (stderr || stdout || "Gagal mengompilasi APK di VPS"),
+            log: isSuccess ? "Build berhasil" : ((stderr || stdout || "Gagal mengompilasi APK di VPS").slice(-2000)),
           };
           sqlDatabaseStore.set(buildId, updatedRecord);
         });
