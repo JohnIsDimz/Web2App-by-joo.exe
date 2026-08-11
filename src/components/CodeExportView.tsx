@@ -163,10 +163,13 @@ export const CodeExportView: React.FC<CodeExportViewProps> = ({
           if (resData.success) {
             setServerDownloadUrl(resData.downloadUrl);
             setBuildRecordId(resData.buildId);
+            const engineTitle = resData.engineTitle || config.engineType.toUpperCase();
             setTerminalLogs((prev) => [
               ...prev,
               ` -> [SQL Vault] Build Transaction Recorded in Server DB. ID: ${resData.buildId}`,
-              ` -> [Binary Payload] Ready (${Math.round((resData.fileSize || 1024) / 1024)} KB) with Auto-Cleanup trigger.`,
+              resData.hasFlutter 
+                ? ` -> [VPS Build Engine: ${engineTitle}] Native compilation triggered in server workspace!`
+                : ` -> [VPS Guidance: ${engineTitle}] SDK/Build Tools belum aktif di VPS. Gunakan './setup_vps.sh' di VPS Anda untuk mengaktifkan kompilasi otomatis, atau unduh Source Code (${engineTitle}) (.zip).`,
             ]);
           }
         }
@@ -181,8 +184,7 @@ export const CodeExportView: React.FC<CodeExportViewProps> = ({
       setApkBuilt(true);
       setTerminalLogs((prev) => [
         ...prev,
-        `[5/5] BUILD SUCCESSFUL! Proyek Engine '${engine}' untuk '${(config.appName || 'app').replace(/[^a-zA-Z0-9_-]/g, '_')}' berhasil dikompilasi.`,
-        ` -> [Auto-Purge System] File APK disiapkan untuk pengiriman instan. Server akan otomatis membersihkan file dari disk setelah terkirim.`,
+        `[5/5] PROSES DITANGGAPI! Proyek Engine '${config.engineType}' untuk '${(config.appName || 'app').replace(/[^a-zA-Z0-9_-]/g, '_')}' telah diverifikasi & siap diunduh.`,
       ]);
 
       // Dispatch background email notification with complete build details
@@ -191,11 +193,11 @@ export const CodeExportView: React.FC<CodeExportViewProps> = ({
           to: currentUser.email,
           recipientName: currentUser.displayName || currentUser.email.split('@')[0],
           templateType: 'build_success',
-          subject: `[Kompilasi Selesai] Aplikasi ${config.appName || 'Web2App'} Berhasil Dikompilasi - Web2App Studio`,
+          subject: `[Kompilasi Selesai] Aplikasi ${config.appName || 'Web2App'} (${config.engineType.toUpperCase()}) Berhasil Dikompilasi - Web2App Studio`,
           appName: config.appName || 'Web2App Project',
           packageName: config.packageName || 'com.jooexe.app',
-          engineType: config.engineType || 'Flutter Native',
-          customMessage: `Aplikasi Anda "${config.appName}" (Package: ${config.packageName || 'com.jooexe.app'}) telah berhasil dikompilasi oleh Web2App Native Engine.`
+          engineType: config.engineType || 'Native Engine',
+          customMessage: `Aplikasi Anda "${config.appName}" (Package: ${config.packageName || 'com.jooexe.app'}) telah berhasil dikompilasi oleh Web2App Native Engine (${config.engineType.toUpperCase()}).`
         });
       }
     }, 5500);

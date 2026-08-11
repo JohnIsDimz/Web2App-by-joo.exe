@@ -11,8 +11,31 @@ import {
 } from './flutterGenerator';
 
 export async function downloadFlutterProjectZip(config: AppConfig) {
+  const engineClean = (config.engineType || 'flutter').toLowerCase().replace(/[^a-z0-9_]/g, '_');
+  const folderName = config.appName.toLowerCase().replace(/[^a-z0-9_]/g, '_') || 'app_project';
+
+  // Attempt backend ZIP API first for maximum fidelity and exact engine structure
+  try {
+    const backendUrl = `/api/export-zip?appName=${encodeURIComponent(config.appName)}&packageName=${encodeURIComponent(config.packageName)}&engineType=${encodeURIComponent(config.engineType)}&url=${encodeURIComponent(config.url)}`;
+    const response = await fetch(backendUrl);
+    if (response.ok) {
+      const blob = await response.blob();
+      const downloadUrl = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = downloadUrl;
+      link.download = `${folderName}_${engineClean}_project.zip`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(downloadUrl);
+      return;
+    }
+  } catch (err) {
+    console.warn('Backend ZIP export fallback to client-side JSZip:', err);
+  }
+
+  // Client-side fallback generation
   const zip = new JSZip();
-  const folderName = config.appName.toLowerCase().replace(/[^a-z0-9_]/g, '_') || 'flutter_app';
   const root = zip.folder(folderName) || zip;
 
   // Add root files
@@ -43,35 +66,12 @@ export async function downloadFlutterProjectZip(config: AppConfig) {
     iosRunner.file('Info.plist', generateInfoPlist(config));
   }
 
-  // Add web folder
-  const webFolder = root.folder('web');
-  if (webFolder) {
-    webFolder.file('manifest.json', generatePwaManifest(config));
-    webFolder.file(
-      'index.html',
-      `<!DOCTYPE html>
-<html>
-<head>
-  <base href="$FLUTTER_BASE_HREF">
-  <meta charset="UTF-8">
-  <meta content="IE=Edge" http-equiv="X-UA-Compatible">
-  <meta name="description" content="${config.splashTagline}">
-  <title>${config.appName}</title>
-  <link rel="manifest" href="manifest.json">
-</head>
-<body>
-  <script src="flutter_bootstrap.js" async></script>
-</body>
-</html>`
-    );
-  }
-
   // Generate blob and trigger browser download
   const content = await zip.generateAsync({ type: 'blob' });
   const downloadUrl = URL.createObjectURL(content);
   const link = document.createElement('a');
   link.href = downloadUrl;
-  link.download = `${folderName}_flutter_project.zip`;
+  link.download = `${folderName}_${engineClean}_project.zip`;
   document.body.appendChild(link);
   link.click();
   document.body.removeChild(link);
