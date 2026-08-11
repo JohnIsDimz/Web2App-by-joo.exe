@@ -20,7 +20,7 @@ app.use(express.urlencoded({ limit: "50mb", extended: true }));
 // ---------------------------------------------------------
 const apiLimiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 100, // Limit each IP to 100 requests per 15 mins
+  max: 2000, // Elevated limit so status polling & session sync never get blocked
   standardHeaders: true,
   legacyHeaders: false,
   message: {
@@ -28,11 +28,12 @@ const apiLimiter = rateLimit({
     error: "Too Many Requests",
     message: "Terlalu banyak permintaan ke API. Silakan coba beberapa saat lagi.",
   },
+  skip: (req) => req.path.includes('/status/') || req.path.includes('/health') || req.path.includes('/vps-status'),
 });
 
 const buildServerLimiter = rateLimit({
   windowMs: 10 * 60 * 1000, // 10 minutes
-  max: 15, // Limit build/proxy/analyze requests to protect VPS server resources
+  max: 30, // Limit creation of new builds
   standardHeaders: true,
   legacyHeaders: false,
   message: {
@@ -42,9 +43,8 @@ const buildServerLimiter = rateLimit({
   },
 });
 
-// Apply rate limiters to API routes
+// Apply general API rate limiter
 app.use("/api/", apiLimiter);
-app.use("/api/build-apk", buildServerLimiter);
 app.use("/api/github/build-trigger", buildServerLimiter);
 app.use("/api/analyze-url", buildServerLimiter);
 
@@ -106,12 +106,27 @@ function sanitizePackageName(rawPkg?: string): string {
   return result;
 }
 
+function getFlutterExe(): string {
+  const possiblePaths = [
+    "/opt/flutter/bin/flutter",
+    "/usr/local/bin/flutter",
+    "/usr/local/flutter/bin/flutter",
+    "/root/flutter/bin/flutter",
+    `${process.env.HOME || '/root'}/flutter/bin/flutter`
+  ];
+  for (const p of possiblePaths) {
+    if (fs.existsSync(p)) return p;
+  }
+  return "flutter";
+}
+
 function getVpsCapabilities(): Promise<{ hasFlutter: boolean; flutterVersion: string; hasJava: boolean }> {
   const now = Date.now();
   if (vpsCapabilityCache && (now - vpsCapabilityCache.lastChecked < 30000)) {
     return Promise.resolve(vpsCapabilityCache);
   }
 
+  const flutterExe = getFlutterExe();
   const directFlutterExists = 
     fs.existsSync("/opt/flutter/bin/flutter") ||
     fs.existsSync("/usr/local/bin/flutter") ||
@@ -121,8 +136,8 @@ function getVpsCapabilities(): Promise<{ hasFlutter: boolean; flutterVersion: st
   const env = getAugmentedEnv();
 
   return new Promise((resolve) => {
-    exec("flutter --version", { env }, (fErr, fOut) => {
-      const versionOk = !fErr && fOut.includes("Flutter");
+    exec(`"${flutterExe}" --version`, { env }, (fErr, fOut) => {
+      const versionOk = !fErr && fOut && fOut.includes("Flutter");
       const hasFlutter = versionOk || directFlutterExists;
       const flutterVersion = versionOk ? fOut.split("\n")[0] : (hasFlutter ? "Flutter SDK Native (/opt/flutter)" : "Standalone Fast Package Engine");
       
@@ -896,7 +911,7 @@ setInterval(() => {
 }, 30 * 60 * 1000);
 
 // 1. POST /api/build-apk : Trigger APK Build, Record in Database
-app.post("/api/build-apk", async (req, res) => {
+app.post("/api/build-apk", buildServerLimiter, async (req, res) => {
   try {
     const { userId, appName, packageName, engineType, url, config } = req.body || {};
     const name = appName || "Web2App";
@@ -939,8 +954,10 @@ app.post("/api/build-apk", async (req, res) => {
       const orgName = cleanPkg.split('.').slice(0, -1).join('.') || 'com.jooexe';
       const projName = (cleanPkg.split('.').pop() || 'app').replace(/[^a-z0-9_]/g, '_').replace(/^([0-9])/, 'app_$1');
 
+      const flutterExe = getFlutterExe();
+
       // Create standard Flutter project scaffolding via flutter create with expanded maxBuffer
-      exec(`flutter create --template=app --org "${orgName}" --project-name "${projName}" "${projDir}"`, { env, maxBuffer: 1024 * 1024 * 50 }, (_cErr) => {
+      exec(`"${flutterExe}" create --template=app --org "${orgName}" --project-name "${projName}" "${projDir}"`, { env, maxBuffer: 1024 * 1024 * 50 }, (_cErr) => {
         fs.mkdirSync(path.join(projDir, "lib"), { recursive: true });
         fs.mkdirSync(path.join(projDir, "android/app/src/main"), { recursive: true });
 
@@ -949,7 +966,7 @@ app.post("/api/build-apk", async (req, res) => {
         fs.writeFileSync(path.join(projDir, "lib/main.dart"), getFlutterMainDart(cfg));
         fs.writeFileSync(path.join(projDir, "android/app/src/main/AndroidManifest.xml"), getFlutterAndroidManifest(cfg));
 
-        exec(`cd "${projDir}" && flutter pub get && flutter build apk --release --no-tree-shake-icons`, { env, maxBuffer: 1024 * 1024 * 50 }, (err, stdout, stderr) => {
+        exec(`cd "${projDir}" && "${flutterExe}" pub get && "${flutterExe}" build apk --release --no-tree-shake-icons`, { env, maxBuffer: 1024 * 1024 * 50 }, (err, stdout, stderr) => {
           const releaseApk = path.join(projDir, "build/app/outputs/flutter-apk/app-release.apk");
           const debugApk = path.join(projDir, "build/app/outputs/flutter-apk/app-debug.apk");
           const generalApk = path.join(projDir, "build/app/outputs/apk/release/app-release.apk");

@@ -97,23 +97,17 @@ export const CodeExportView: React.FC<CodeExportViewProps> = ({
   const currentActiveFile = activeFile || tabs[0].id;
 
   const handleStartBuild = async () => {
-    // If logged in, check VIP or deduct token
+    // Check if user is logged in
     if (currentUser) {
       const isVIP = userProfile?.isAdmin || userProfile?.subscriptionPlan === 'Enterprise' || (currentUser.email && isAdminUser(currentUser.email));
       const tokens = userProfile?.tokens ?? 0;
 
       if (!isVIP && tokens < 1) {
-        alert("Token Build Anda habis (0 Token). Namun Anda dapat melanjutkan dalam mode Developer Trial!");
-      } else if (!isVIP) {
-        try {
-          await deductToken(currentUser.uid, 1);
-        } catch (err) {
-          console.warn("Deduct token warning, proceeding build:", err);
-        }
+        alert("Token Build Anda habis (0 Token). Namun Anda dapat melanjutkan kompilasi dalam mode Developer Trial!");
       }
     }
 
-    // Always initiate the build request pipeline
+    // Initiate the build request pipeline
     startRealtimeApkBuild();
   };
 
@@ -253,12 +247,20 @@ export const CodeExportView: React.FC<CodeExportViewProps> = ({
           setBuildRecordId(bId);
           const engineTitle = resData.engineTitle || config.engineType.toUpperCase();
 
+          // Deduct token ONLY now after server confirms build trigger
+          if (currentUser && resData.hasFlutter) {
+            const isVIP = userProfile?.isAdmin || userProfile?.subscriptionPlan === 'Enterprise' || (currentUser.email && isAdminUser(currentUser.email));
+            if (!isVIP && (userProfile?.tokens ?? 0) > 0) {
+              deductToken(currentUser.uid, 1).catch((err) => console.warn("Token deduction error:", err));
+            }
+          }
+
           setTerminalLogs((prev) => [
             ...prev,
             ` -> [SQL Vault] Build Transaction Recorded in Server DB. ID: ${bId}`,
             resData.hasFlutter
               ? ` -> [VPS Build Engine: ${engineTitle}] Native compilation triggered in server workspace!`
-              : ` -> [VPS Guidance: ${engineTitle}] SDK/Build Tools belum aktif di VPS. Gunakan './setup_vps.sh' di VPS Anda untuk mengaktifkan kompilasi otomatis.`,
+              : ` -> [VPS Notice: ${engineTitle}] Flutter SDK belum aktif di VPS. Kompilasi otomatis memerlukan setup_vps.sh. Source code ZIP lengkap siap diunduh!`,
           ]);
 
           if (!resData.hasFlutter) {
@@ -533,44 +535,50 @@ export const CodeExportView: React.FC<CodeExportViewProps> = ({
         </div>
       )}
 
-      {/* Code Viewer & Tabs */}
-      <div className="bg-slate-900 border border-slate-800 rounded-2xl overflow-hidden shadow-2xl">
-        {/* File Tabs Bar */}
-        <div className="bg-slate-950 border-b border-slate-800 px-4 py-2.5 flex items-center justify-between overflow-x-auto gap-2">
-          <div className="flex items-center gap-1">
-            {tabs.map((tab) => {
-              const Icon = tab.icon;
-              return (
-                <button
-                  key={tab.id}
-                  onClick={() => setActiveFile(tab.id)}
-                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-mono font-medium transition-all shrink-0 ${
-                    currentActiveFile === tab.id
-                      ? 'bg-sky-500/20 text-sky-300 border border-sky-500/30'
-                      : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/60'
-                  }`}
-                >
-                  <Icon className="w-3.5 h-3.5" />
-                  <span>{tab.name}</span>
-                </button>
-              );
-            })}
+      {/* Engine Feature Summary & Instructions Card */}
+      <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6 shadow-xl space-y-4">
+        <div className="flex items-center justify-between border-b border-slate-800 pb-3">
+          <div className="flex items-center gap-2">
+            <Smartphone className="w-5 h-5 text-sky-400" />
+            <h4 className="font-bold text-white text-sm">
+              Sistem Kompilasi & Fitur Engine: <span className="text-sky-300">{currentEngineTitle}</span>
+            </h4>
           </div>
-
-          <button
-            onClick={handleCopy}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-xs text-slate-200 border border-slate-700 transition-all shrink-0"
-          >
-            {copied ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <Copy className="w-3.5 h-3.5" />}
-            <span>{copied ? 'Tersalin!' : 'Salin Kode'}</span>
-          </button>
+          <span className="text-xs px-2.5 py-1 bg-sky-500/10 text-sky-300 border border-sky-500/30 rounded-full font-mono">
+            {config.packageName || 'com.jooexe.app'}
+          </span>
         </div>
 
-        {/* Code View Canvas */}
-        <div className="p-4 bg-slate-950/90 overflow-x-auto max-h-[500px]">
-          <pre className="text-xs font-mono text-slate-300 leading-relaxed">
-            <code>{getFileContent()}</code>
-          </pre>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-xs">
+          <div className="bg-slate-950 p-4 rounded-xl border border-slate-800/80 space-y-2">
+            <h5 className="font-bold text-slate-200 flex items-center gap-2">
+              <span className="w-2 h-2 rounded-full bg-emerald-400"></span>
+              Fitur Native Siap Pakai
+            </h5>
+            <p className="text-slate-400 leading-relaxed text-[11px]">
+              Aplikasi dikompilasi langsung menggunakan WebView Native Android, Biometric Auth, Offline Screen, SSL Bypass, & custom splash screen sesuai konfigurasi Anda.
+            </p>
+          </div>
+
+          <div className="bg-slate-950 p-4 rounded-xl border border-slate-800/80 space-y-2">
+            <h5 className="font-bold text-slate-200 flex items-center gap-2">
+              <span className="w-2 h-2 rounded-full bg-sky-400"></span>
+              Proses Kompilasi VPS
+            </h5>
+            <p className="text-slate-400 leading-relaxed text-[11px]">
+              Klik tombol <strong className="text-emerald-400">Build Production APK</strong> di atas untuk menjalankan pipeline kompilasi otomatis di server VPS Anda secara real-time.
+            </p>
+          </div>
+
+          <div className="bg-slate-950 p-4 rounded-xl border border-slate-800/80 space-y-2">
+            <h5 className="font-bold text-slate-200 flex items-center gap-2">
+              <span className="w-2 h-2 rounded-full bg-purple-400"></span>
+              Ekspor Source Code ZIP
+            </h5>
+            <p className="text-slate-400 leading-relaxed text-[11px]">
+              Gunakan tombol <strong className="text-sky-400">Unduh Proyek ZIP</strong> jika Anda ingin mengunduh seluruh berkas proyek mentah untuk dikompilasi sendiri di Android Studio.
+            </p>
+          </div>
         </div>
       </div>
     </div>
