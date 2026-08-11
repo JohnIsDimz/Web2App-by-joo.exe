@@ -47,12 +47,22 @@ if [ ! -d "$FLUTTER_DIR" ]; then
     sudo chown -R $USER:$USER $FLUTTER_DIR
 fi
 
-# Add Flutter to PATH
+# Add Flutter to PATH and create system-wide symlinks for PM2/systemd non-interactive shells
 export PATH="$PATH:$FLUTTER_DIR/bin"
 if ! grep -q "/opt/flutter/bin" ~/.bashrc; then
     echo 'export PATH="$PATH:/opt/flutter/bin"' >> ~/.bashrc
 fi
 
+# Create global symlinks for PM2 and system services
+sudo ln -sf /opt/flutter/bin/flutter /usr/local/bin/flutter
+sudo ln -sf /opt/flutter/bin/dart /usr/local/bin/dart
+
+# Configure Git safe directory for root/PM2 execution
+git config --global --add safe.directory /opt/flutter || true
+sudo git config --system --add safe.directory /opt/flutter || true
+
+flutter config --no-analytics || true
+flutter precache --android || true
 flutter --version || true
 
 # 6. Setup Firewall (UFW)

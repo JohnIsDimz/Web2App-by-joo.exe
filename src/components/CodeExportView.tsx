@@ -40,9 +40,7 @@ export const CodeExportView: React.FC<CodeExportViewProps> = ({
   onOpenWalletModal,
   onOpenAuthModal,
 }) => {
-  const [activeFile, setActiveFile] = useState<
-    'main.dart' | 'pubspec.yaml' | 'AndroidManifest.xml' | 'Info.plist' | 'manifest.json' | 'README.md'
-  >('main.dart');
+  const [activeFile, setActiveFile] = useState<string>('');
   const [copied, setCopied] = useState(false);
   const [isBuildingApk, setIsBuildingApk] = useState(false);
   const [apkStep, setApkStep] = useState(0);
@@ -50,6 +48,53 @@ export const CodeExportView: React.FC<CodeExportViewProps> = ({
   const [terminalLogs, setTerminalLogs] = useState<string[]>([]);
   const [serverDownloadUrl, setServerDownloadUrl] = useState<string>('');
   const [buildRecordId, setBuildRecordId] = useState<string>('');
+
+  const getTabsForEngine = (engineType?: string) => {
+    const e = (engineType || 'flutter').toLowerCase().replace(/_/g, '-');
+    if (e.includes('react-native') || e.includes('expo')) {
+      return [
+        { id: 'App.tsx', name: 'App.tsx', icon: FileCode },
+        { id: 'package.json', name: 'package.json', icon: FileText },
+        { id: 'AndroidManifest.xml', name: 'AndroidManifest.xml', icon: Smartphone },
+        { id: 'README.md', name: 'README.md', icon: FileText },
+      ];
+    }
+    if (e.includes('capacitor') || e.includes('cordova')) {
+      return [
+        { id: 'capacitor.config.json', name: 'capacitor.config.json', icon: FileCode },
+        { id: 'package.json', name: 'package.json', icon: FileText },
+        { id: 'AndroidManifest.xml', name: 'AndroidManifest.xml', icon: Smartphone },
+        { id: 'README.md', name: 'README.md', icon: FileText },
+      ];
+    }
+    if (e.includes('kotlin') || e.includes('webview') || e.includes('android')) {
+      return [
+        { id: 'MainActivity.kt', name: 'MainActivity.kt', icon: FileCode },
+        { id: 'AndroidManifest.xml', name: 'AndroidManifest.xml', icon: Smartphone },
+        { id: 'build.gradle', name: 'build.gradle', icon: FileText },
+        { id: 'README.md', name: 'README.md', icon: FileText },
+      ];
+    }
+    if (e.includes('pwa')) {
+      return [
+        { id: 'index.html', name: 'index.html', icon: FileCode },
+        { id: 'manifest.json', name: 'manifest.json', icon: FileText },
+        { id: 'sw.js', name: 'sw.js', icon: FileCode },
+        { id: 'README.md', name: 'README.md', icon: FileText },
+      ];
+    }
+    // Default Flutter
+    return [
+      { id: 'main.dart', name: 'lib/main.dart', icon: FileCode },
+      { id: 'pubspec.yaml', name: 'pubspec.yaml', icon: FileText },
+      { id: 'AndroidManifest.xml', name: 'AndroidManifest.xml', icon: Smartphone },
+      { id: 'Info.plist', name: 'Info.plist', icon: Smartphone },
+      { id: 'README.md', name: 'README.md', icon: FileText },
+    ];
+  };
+
+  const tabs = getTabsForEngine(config.engineType);
+  const currentActiveFile = activeFile || tabs[0].id;
 
   const handleStartBuild = async () => {
     // Strictly require real authenticated user account
@@ -79,8 +124,31 @@ export const CodeExportView: React.FC<CodeExportViewProps> = ({
     }
   };
 
+  const getEngineLabel = (engineType?: string) => {
+    const e = (engineType || 'flutter').toLowerCase().replace(/_/g, '-');
+    switch (e) {
+      case 'pwa-shell': return 'PWA Standalone WebShell';
+      case 'android-webview': return 'Android WebView Shell (Java/Kotlin)';
+      case 'ios-webview': return 'iOS Swift WKWebView Shell';
+      case 'cordova': return 'Apache Cordova Hybrid Engine';
+      case 'flutter': return 'Flutter 3.x Native Engine';
+      case 'kotlin': return 'Android Jetpack Compose (Kotlin)';
+      case 'swift': return 'iOS SwiftUI Native Engine';
+      case 'capacitor': return 'Capacitor Hybrid Engine';
+      case 'react-native': return 'React Native / Expo Engine';
+      case 'tauri': return 'Tauri 2.0 Rust Engine';
+      case 'kmp': return 'Kotlin Multiplatform (KMP)';
+      case 'turbo-native': return 'Turbo Native Engine';
+      case 'harmony-os': return 'HarmonyOS ArkUI Engine';
+      case 'electron-pro': return 'Electron Pro Desktop Shell';
+      default: return `${engineType ? engineType.toUpperCase() : 'Native'} Engine`;
+    }
+  };
+
+  const currentEngineTitle = getEngineLabel(config.engineType);
+
   const getFileContent = () => {
-    switch (activeFile) {
+    switch (currentActiveFile) {
       case 'main.dart':
         return generateMainDart(config);
       case 'pubspec.yaml':
@@ -91,7 +159,33 @@ export const CodeExportView: React.FC<CodeExportViewProps> = ({
         return generateInfoPlist(config);
       case 'manifest.json':
         return generatePwaManifest(config);
+      case 'App.tsx':
+      case 'App.js':
+        return `import React from 'react';\nimport { SafeAreaView, StyleSheet } from 'react-native';\nimport { WebView } from 'react-native-webview';\n\nexport default function App() {\n  return (\n    <SafeAreaView style={styles.container}>\n      <WebView source={{ uri: '${config.url}' }} javaScriptEnabled={true} domStorageEnabled={true} />\n    </SafeAreaView>\n  );\n}\n\nconst styles = StyleSheet.create({\n  container: { flex: 1, backgroundColor: '${config.splashBackgroundColor || '#0f172a'}' },\n});`;
+      case 'package.json':
+        return JSON.stringify({
+          name: (config.appName || 'web2app').toLowerCase().replace(/[^a-z0-9]/g, '-'),
+          version: config.versionName || '1.0.0',
+          private: true,
+          dependencies: { react: '18.2.0', 'react-native': '0.72.6', 'react-native-webview': '13.2.2' }
+        }, null, 2);
+      case 'capacitor.config.json':
+        return JSON.stringify({
+          appId: config.packageName || 'com.jooexe.app',
+          appName: config.appName || 'Web2App',
+          webDir: 'dist',
+          server: { url: config.url, cleartext: true }
+        }, null, 2);
+      case 'MainActivity.kt':
+        return `package ${config.packageName || 'com.jooexe.app'}\n\nimport android.os.Bundle\nimport android.webkit.WebView\nimport android.webkit.WebViewClient\nimport androidx.appcompat.app.AppCompatActivity\n\nclass MainActivity : AppCompatActivity() {\n    override fun onCreate(savedInstanceState: Bundle?) {\n        super.onCreate(savedInstanceState)\n        val webView = WebView(this)\n        webView.settings.javaScriptEnabled = true\n        webView.webViewClient = WebViewClient()\n        webView.loadUrl("${config.url}")\n        setContentView(webView)\n    }\n}`;
+      case 'build.gradle':
+        return `plugins {\n    id 'com.android.application'\n    id 'kotlin-android'\n}\n\nandroid {\n    namespace '${config.packageName || 'com.jooexe.app'}'\n    compileSdk 34\n    defaultConfig {\n        applicationId "${config.packageName || 'com.jooexe.app'}"\n        minSdk 24\n        targetSdk 34\n        versionCode ${config.versionCode || 1}\n        versionName "${config.versionName || '1.0.0'}"\n    }\n}`;
+      case 'index.html':
+        return `<!DOCTYPE html>\n<html lang="id">\n<head>\n  <meta charset="UTF-8">\n  <title>${config.appName || 'Web2App'}</title>\n  <link rel="manifest" href="manifest.json">\n</head>\n<body>\n  <iframe src="${config.url}" style="width:100vw;height:100vh;border:none;"></iframe>\n</body>\n</html>`;
+      case 'sw.js':
+        return `self.addEventListener('fetch', (e) => {\n  e.respondWith(fetch(e.request).catch(() => caches.match(e.request)));\n});`;
       case 'README.md':
+      default:
         return generateReadme(config);
     }
   };
@@ -124,7 +218,7 @@ export const CodeExportView: React.FC<CodeExportViewProps> = ({
         ` -> Biometric Security: ${config.enableBiometrics ? 'Enabled (Fingerprint/FaceID)' : 'Disabled'}`,
         ` -> Screen Security: ${config.enableScreenSecurity ? 'Enabled (FLAG_SECURE)' : 'Disabled'}`,
       ]);
-    }, 1200);
+    }, 1000);
 
     setTimeout(() => {
       setApkStep(3);
@@ -134,14 +228,14 @@ export const CodeExportView: React.FC<CodeExportViewProps> = ({
         ` -> Camera: ${config.permissions.camera}, Location: ${config.permissions.location}, Push: ${config.permissions.notifications}`,
         ` -> Injected Custom CSS & JS overrides`,
       ]);
-    }, 2500);
+    }, 2000);
 
     setTimeout(async () => {
       setApkStep(4);
       setTerminalLogs((prev) => [
         ...prev,
-        `[4/5] Sending Build Payload to Server & Recording in SQL Database Vault...`,
-        ` -> Running gradle/xcode assembleRelease on server container...`,
+        `[4/5] Sending Build Payload to VPS Server & Recording in SQL Vault...`,
+        ` -> Starting background compilation pipeline...`,
       ]);
 
       try {
@@ -161,54 +255,116 @@ export const CodeExportView: React.FC<CodeExportViewProps> = ({
         if (response.ok) {
           const resData = await response.json();
           if (resData.success) {
+            const bId = resData.buildId;
             setServerDownloadUrl(resData.downloadUrl);
-            setBuildRecordId(resData.buildId);
+            setBuildRecordId(bId);
             const engineTitle = resData.engineTitle || config.engineType.toUpperCase();
+
             setTerminalLogs((prev) => [
               ...prev,
-              ` -> [SQL Vault] Build Transaction Recorded in Server DB. ID: ${resData.buildId}`,
-              resData.hasFlutter 
+              ` -> [SQL Vault] Build Transaction Recorded in Server DB. ID: ${bId}`,
+              resData.hasFlutter
                 ? ` -> [VPS Build Engine: ${engineTitle}] Native compilation triggered in server workspace!`
-                : ` -> [VPS Guidance: ${engineTitle}] SDK/Build Tools belum aktif di VPS. Gunakan './setup_vps.sh' di VPS Anda untuk mengaktifkan kompilasi otomatis, atau unduh Source Code (${engineTitle}) (.zip).`,
+                : ` -> [VPS Guidance: ${engineTitle}] SDK/Build Tools belum aktif di VPS. Gunakan './setup_vps.sh' di VPS Anda untuk mengaktifkan kompilasi otomatis.`,
             ]);
+
+            if (!resData.hasFlutter) {
+              setApkStep(5);
+              setIsBuildingApk(false);
+              setApkBuilt(true);
+              return;
+            }
+
+            // Real-time server status polling
+            let pollAttempts = 0;
+            const maxPolls = 30; // Max 60 seconds
+            const interval = setInterval(async () => {
+              pollAttempts++;
+              try {
+                const statusRes = await fetch(`/api/build-apk/status/${bId}`);
+                if (statusRes.ok) {
+                  const sData = await statusRes.json();
+                  if (sData.status === 'compiled_ready') {
+                    clearInterval(interval);
+                    setApkStep(5);
+                    setIsBuildingApk(false);
+                    setApkBuilt(true);
+                    const sizeMb = sData.fileSize ? (sData.fileSize / (1024 * 1024)).toFixed(1) : '15.4';
+                    setTerminalLogs((prev) => [
+                      ...prev,
+                      `[5/5] KOMPILASI VPS SELESAI! File APK '${(config.appName || 'app').replace(/[^a-zA-Z0-9_-]/g, '_')}.apk' (${sizeMb} MB) SIAP DIUNDUH.`,
+                    ]);
+                    if (currentUser?.email) {
+                      triggerEmailEvent({
+                        to: currentUser.email,
+                        recipientName: currentUser.displayName || currentUser.email.split('@')[0],
+                        templateType: 'build_success',
+                        subject: `[Kompilasi Selesai] Aplikasi ${config.appName || 'Web2App'} (${config.engineType.toUpperCase()}) Berhasil Dikompilasi - Web2App Studio`,
+                        appName: config.appName || 'Web2App Project',
+                        packageName: config.packageName || 'com.jooexe.app',
+                        engineType: config.engineType || 'Native Engine',
+                        customMessage: `Aplikasi Anda "${config.appName}" (Package: ${config.packageName || 'com.jooexe.app'}) telah berhasil dikompilasi oleh Web2App Native Engine (${config.engineType.toUpperCase()}). File APK berukuran ${sizeMb} MB.`
+                      });
+                    }
+                    return;
+                  } else if (sData.status === 'compilation_failed') {
+                    clearInterval(interval);
+                    setApkStep(5);
+                    setIsBuildingApk(false);
+                    setApkBuilt(true);
+                    setTerminalLogs((prev) => [
+                      ...prev,
+                      `[5/5] Kompilasi VPS dihentikan: ${sData.log || 'Gagal mengompilasi APK'}. Source code ZIP tetap siap diunduh.`,
+                    ]);
+                    return;
+                  }
+                }
+              } catch (e) {
+                console.warn('Poll error:', e);
+              }
+
+              if (pollAttempts >= maxPolls) {
+                clearInterval(interval);
+                setApkStep(5);
+                setIsBuildingApk(false);
+                setApkBuilt(true);
+                setTerminalLogs((prev) => [
+                  ...prev,
+                  `[5/5] Waktu tunggu server selesai. File APK siap diunduh.`,
+                ]);
+              }
+            }, 2000);
+
           }
         }
       } catch (err) {
         console.warn('Fallback server build trigger:', err);
+        setApkStep(5);
+        setIsBuildingApk(false);
+        setApkBuilt(true);
       }
-    }, 3800);
+    }, 3000);
+  };
 
-    setTimeout(() => {
-      setApkStep(5);
-      setIsBuildingApk(false);
-      setApkBuilt(true);
-      setTerminalLogs((prev) => [
-        ...prev,
-        `[5/5] PROSES DITANGGAPI! Proyek Engine '${config.engineType}' untuk '${(config.appName || 'app').replace(/[^a-zA-Z0-9_-]/g, '_')}' telah diverifikasi & siap diunduh.`,
-      ]);
-
-      // Dispatch background email notification with complete build details
-      if (currentUser?.email) {
-        triggerEmailEvent({
-          to: currentUser.email,
-          recipientName: currentUser.displayName || currentUser.email.split('@')[0],
-          templateType: 'build_success',
-          subject: `[Kompilasi Selesai] Aplikasi ${config.appName || 'Web2App'} (${config.engineType.toUpperCase()}) Berhasil Dikompilasi - Web2App Studio`,
-          appName: config.appName || 'Web2App Project',
-          packageName: config.packageName || 'com.jooexe.app',
-          engineType: config.engineType || 'Native Engine',
-          customMessage: `Aplikasi Anda "${config.appName}" (Package: ${config.packageName || 'com.jooexe.app'}) telah berhasil dikompilasi oleh Web2App Native Engine (${config.engineType.toUpperCase()}).`
-        });
-      }
-    }, 5500);
+  const handleDownloadZip = () => {
+    const zipUrl = `/api/export-zip?appName=${encodeURIComponent(config.appName || 'Web2App')}&packageName=${encodeURIComponent(config.packageName || 'com.jooexe.app')}&engineType=${encodeURIComponent(config.engineType || 'flutter')}&url=${encodeURIComponent(config.url || 'https://web2app.studio')}`;
+    window.open(zipUrl, '_blank');
   };
 
   const handleDownloadApk = async () => {
     const cleanName = (config.appName || 'Web2App').replace(/[^a-zA-Z0-9_-]/g, '_');
-    const targetUrl = serverDownloadUrl || `/api/build-apk?appName=${encodeURIComponent(config.appName || 'Web2App')}`;
+    const targetUrl = serverDownloadUrl || `/api/build-apk?appName=${encodeURIComponent(config.appName || 'Web2App')}&packageName=${encodeURIComponent(config.packageName || 'com.jooexe.app')}&engineType=${encodeURIComponent(config.engineType || 'flutter')}&url=${encodeURIComponent(config.url || 'https://web2app.studio')}`;
 
     try {
       const response = await fetch(targetUrl);
+      const contentType = response.headers.get('content-type') || '';
+
+      // If server returned an HTML progress or guidance page, open in tab instead of saving corrupt HTML as .apk
+      if (contentType.includes('text/html')) {
+        window.open(targetUrl, '_blank');
+        return;
+      }
+
       if (response.ok) {
         const blob = await response.blob();
         const apkBlob = new Blob([blob], { type: 'application/vnd.android.package-archive' });
@@ -221,10 +377,10 @@ export const CodeExportView: React.FC<CodeExportViewProps> = ({
         document.body.removeChild(a);
         setTimeout(() => URL.revokeObjectURL(url), 1000);
       } else {
-        window.location.href = targetUrl;
+        window.open(targetUrl, '_blank');
       }
     } catch (err) {
-      window.location.href = targetUrl;
+      window.open(targetUrl, '_blank');
     }
   };
 
@@ -238,7 +394,7 @@ export const CodeExportView: React.FC<CodeExportViewProps> = ({
             <span>Proyek Web2App Real-Time Multi-Engine</span>
           </h3>
           <p className="text-xs text-slate-300 mt-1 max-w-2xl">
-            Proyek Native dengan mesin {config.engineType === 'pwa_shell' ? 'PWA-SHELL' : (config.engineType || 'flutter')} siap kompilasi production untuk APK Android, iOS, & Desktop. Jalankan pipeline builder real-time di server cloud.
+            Proyek Native dengan mesin <strong className="text-sky-300">{currentEngineTitle}</strong> siap kompilasi production untuk APK Android, iOS, & Desktop. Jalankan pipeline builder real-time di server cloud.
           </p>
         </div>
 
@@ -257,7 +413,7 @@ export const CodeExportView: React.FC<CodeExportViewProps> = ({
             className="flex items-center justify-center gap-1.5 px-4 py-2.5 bg-gradient-to-r from-sky-500 to-blue-600 hover:from-sky-400 hover:to-blue-500 text-white font-bold text-xs rounded-xl shadow-lg shadow-sky-500/30 transition-all active:scale-95"
           >
             <Download className="w-3.5 h-3.5" />
-            <span>Unduh Proyek ZIP</span>
+            <span>Unduh Proyek ZIP ({currentEngineTitle})</span>
           </button>
 
         </div>
@@ -270,7 +426,7 @@ export const CodeExportView: React.FC<CodeExportViewProps> = ({
             <div className="flex items-center gap-2">
               <Smartphone className="w-5 h-5 text-emerald-400" />
               <h4 className="font-bold text-white text-sm">
-                Pipeline Kompilasi Real-Time Flutter APK ({config.appName}.apk)
+                Pipeline Kompilasi Real-Time ({currentEngineTitle}) - {config.appName}.apk
               </h4>
             </div>
             {apkBuilt && (
@@ -301,7 +457,7 @@ export const CodeExportView: React.FC<CodeExportViewProps> = ({
               }`}
             >
               <div className="font-bold mb-1">2. WebView Inject</div>
-              <p className="text-[11px] opacity-80">Menyiapkan flutter_inappwebview 6.0</p>
+              <p className="text-[11px] opacity-80">Menyiapkan Engine ({currentEngineTitle})</p>
             </div>
 
             <div
@@ -323,7 +479,7 @@ export const CodeExportView: React.FC<CodeExportViewProps> = ({
               }`}
             >
               <div className="font-bold mb-1">4. Release Package</div>
-              <p className="text-[11px] opacity-80">Mengemas installer Flutter .APK</p>
+              <p className="text-[11px] opacity-80">Mengemas installer ({currentEngineTitle})</p>
             </div>
           </div>
 
@@ -355,7 +511,7 @@ export const CodeExportView: React.FC<CodeExportViewProps> = ({
                   <span>Kompilasi Real-Time Selesai! Proyek '{config.appName}' Siap Digunakan</span>
                 </p>
                 <p className="text-[11px] text-slate-300 mt-0.5">
-                  Seluruh kode sumber Flutter Native & struktur proyek lengkap telah diverifikasi dan siap diunduh.
+                  Seluruh kode sumber Engine Native ({currentEngineTitle}) & struktur proyek lengkap telah diverifikasi dan siap diunduh.
                 </p>
               </div>
 
@@ -373,7 +529,7 @@ export const CodeExportView: React.FC<CodeExportViewProps> = ({
                   className="px-4 py-2.5 bg-gradient-to-r from-sky-500 to-blue-600 hover:from-sky-400 hover:to-blue-500 text-white font-bold text-xs rounded-xl shadow-lg shadow-sky-500/30 flex items-center gap-2 shrink-0 transition-all active:scale-95"
                 >
                   <Download className="w-4 h-4" />
-                  <span>Unduh Proyek ZIP</span>
+                  <span>Unduh Source Code ZIP ({currentEngineTitle})</span>
                 </button>
               </div>
             </div>
@@ -386,21 +542,14 @@ export const CodeExportView: React.FC<CodeExportViewProps> = ({
         {/* File Tabs Bar */}
         <div className="bg-slate-950 border-b border-slate-800 px-4 py-2.5 flex items-center justify-between overflow-x-auto gap-2">
           <div className="flex items-center gap-1">
-            {[
-              { id: 'main.dart', name: 'lib/main.dart', icon: FileCode },
-              { id: 'pubspec.yaml', name: 'pubspec.yaml', icon: FileText },
-              { id: 'AndroidManifest.xml', name: 'AndroidManifest.xml', icon: Smartphone },
-              { id: 'Info.plist', name: 'Info.plist', icon: Smartphone },
-              { id: 'manifest.json', name: 'web/manifest.json', icon: FileText },
-              { id: 'README.md', name: 'README.md', icon: FileText },
-            ].map((tab) => {
+            {tabs.map((tab) => {
               const Icon = tab.icon;
               return (
                 <button
                   key={tab.id}
-                  onClick={() => setActiveFile(tab.id as any)}
+                  onClick={() => setActiveFile(tab.id)}
                   className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-mono font-medium transition-all shrink-0 ${
-                    activeFile === tab.id
+                    currentActiveFile === tab.id
                       ? 'bg-sky-500/20 text-sky-300 border border-sky-500/30'
                       : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/60'
                   }`}

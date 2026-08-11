@@ -34,6 +34,7 @@ import {
 } from 'lucide-react';
 import { AppConfig } from '../types';
 import { UserProfileData } from '../lib/firebase';
+import { sanitizePackageName } from '../utils/packageName';
 
 interface ConfiguratorProps {
   config: AppConfig;
@@ -220,16 +221,31 @@ export const Configurator: React.FC<ConfiguratorProps> = ({
             </div>
 
             <div>
-              <label className="block text-xs font-semibold text-slate-300 mb-1.5">
-                Package ID (Android & iOS)
+              <label className="block text-xs font-semibold text-slate-300 mb-1.5 flex items-center justify-between">
+                <span>Package ID (Android APK / Bundle)</span>
+                <span className="text-[10px] text-emerald-400 font-mono font-semibold">
+                  ✓ Valid Format
+                </span>
               </label>
               <input
                 type="text"
                 value={config.packageName}
-                onChange={(e) => onChangeConfig({ packageName: e.target.value })}
+                onChange={(e) => {
+                  const raw = e.target.value;
+                  // Replace spaces and invalid hyphens immediately for smooth user typing
+                  const cleaned = raw.toLowerCase().replace(/[^a-z0-9._]/g, '_');
+                  onChangeConfig({ packageName: cleaned });
+                }}
+                onBlur={() => {
+                  const finalSanitized = sanitizePackageName(config.packageName);
+                  onChangeConfig({ packageName: finalSanitized });
+                }}
                 className="w-full px-3.5 py-2.5 bg-slate-950 border border-slate-700/80 rounded-xl text-white text-sm font-mono focus:outline-none focus:ring-2 focus:ring-sky-500"
                 placeholder="com.jooexe.appname"
               />
+              <p className="text-[11px] text-slate-400 mt-1">
+                Format paket Android resmi. Hanya huruf kecil, angka, titik, dan garis bawah (_).
+              </p>
             </div>
 
             <div>

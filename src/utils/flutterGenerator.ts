@@ -1,4 +1,5 @@
 import { AppConfig } from '../types';
+import { sanitizePackageName } from './packageName';
 
 export function generateMainDart(config: AppConfig): string {
   const sanitizeName = config.appName.replace(/[^a-zA-Z0-9]/g, '');
@@ -425,9 +426,10 @@ flutter:
 }
 
 export function generateAndroidManifest(config: AppConfig): string {
+  const pkg = sanitizePackageName(config.packageName);
   return `<?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
-    package="${config.packageName}">
+    package="${pkg}">
 
     <!-- Network Permissions -->
     <uses-permission android:name="android.permission.INTERNET"/>

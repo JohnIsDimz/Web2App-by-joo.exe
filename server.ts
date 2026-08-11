@@ -51,17 +51,83 @@ app.use("/api/analyze-url", buildServerLimiter);
 // Cached VPS capability detection for ultra-fast /api/health response
 let vpsCapabilityCache: { hasFlutter: boolean; flutterVersion: string; hasJava: boolean; lastChecked: number } | null = null;
 
+function getAugmentedEnv() {
+  const systemHome = process.env.HOME || "/root";
+  const customPaths = [
+    "/opt/flutter/bin",
+    "/usr/local/flutter/bin",
+    `${systemHome}/flutter/bin`,
+    "/root/flutter/bin",
+    "/snap/bin",
+    "/usr/local/bin",
+    "/usr/bin",
+    "/bin"
+  ];
+  
+  const currentPath = process.env.PATH || "";
+  const combinedList = [...customPaths, ...currentPath.split(":")].filter(Boolean);
+  const uniquePaths = Array.from(new Set(combinedList)).join(":");
+
+  return {
+    ...process.env,
+    PATH: uniquePaths,
+    JAVA_HOME: process.env.JAVA_HOME || "/usr/lib/jvm/java-17-openjdk-amd64",
+    ANDROID_HOME: process.env.ANDROID_HOME || "/usr/lib/android-sdk",
+  };
+}
+
+function sanitizePackageName(rawPkg?: string): string {
+  if (!rawPkg || typeof rawPkg !== 'string') return 'com.jooexe.app';
+
+  let pkg = rawPkg.toLowerCase().trim();
+  pkg = pkg.replace(/[^a-z0-9._]/g, '_');
+  let segments = pkg.split('.').filter(Boolean);
+
+  if (segments.length < 2) {
+    if (segments.length === 1) {
+      segments = ['com', 'jooexe', segments[0]];
+    } else {
+      segments = ['com', 'jooexe', 'app'];
+    }
+  }
+
+  const cleanSegments = segments.map((seg, idx) => {
+    let s = seg.replace(/^[^a-z]+/, '');
+    if (!s) s = idx === 0 ? 'com' : 'app';
+    return s;
+  });
+
+  let result = cleanSegments.join('.');
+
+  if (!/^[a-z][a-z0-9_]*(\.[a-z][a-z0-9_]*)+$/.test(result)) {
+    return 'com.jooexe.app';
+  }
+
+  return result;
+}
+
 function getVpsCapabilities(): Promise<{ hasFlutter: boolean; flutterVersion: string; hasJava: boolean }> {
   const now = Date.now();
-  if (vpsCapabilityCache && (now - vpsCapabilityCache.lastChecked < 60000)) { // cache for 1 minute
+  if (vpsCapabilityCache && (now - vpsCapabilityCache.lastChecked < 30000)) {
     return Promise.resolve(vpsCapabilityCache);
   }
+
+  const directFlutterExists = 
+    fs.existsSync("/opt/flutter/bin/flutter") ||
+    fs.existsSync("/usr/local/bin/flutter") ||
+    fs.existsSync("/usr/local/flutter/bin/flutter") ||
+    fs.existsSync("/root/flutter/bin/flutter");
+
+  const env = getAugmentedEnv();
+
   return new Promise((resolve) => {
-    exec("flutter --version", (fErr, fOut) => {
-      const hasFlutter = !fErr && fOut.includes("Flutter");
-      const flutterVersion = hasFlutter ? fOut.split("\n")[0] : "Standalone Fast Package Engine";
-      exec("java -version", (jErr) => {
-        const hasJava = !jErr;
+    exec("flutter --version", { env }, (fErr, fOut) => {
+      const versionOk = !fErr && fOut.includes("Flutter");
+      const hasFlutter = versionOk || directFlutterExists;
+      const flutterVersion = versionOk ? fOut.split("\n")[0] : (hasFlutter ? "Flutter SDK Native (/opt/flutter)" : "Standalone Fast Package Engine");
+      
+      exec("java -version", { env }, (jErr) => {
+        const hasJava = !jErr || fs.existsSync("/usr/bin/java") || fs.existsSync("/usr/lib/jvm");
         vpsCapabilityCache = { hasFlutter, flutterVersion, hasJava, lastChecked: now };
         resolve(vpsCapabilityCache);
       });
@@ -716,7 +782,7 @@ app.get("/api/export-zip", async (req, res) => {
   try {
     const name = (req.query.appName as string) || "Web2App";
     const cleanName = name.replace(/[^a-zA-Z0-9_-]/g, "_");
-    const pkg = (req.query.packageName as string) || `com.jooexe.${cleanName.toLowerCase()}`;
+    const pkg = sanitizePackageName((req.query.packageName as string) || `com.jooexe.${cleanName.toLowerCase()}`);
     const targetUrl = (req.query.url as string) || "https://web2app.studio";
     const engineType = (req.query.engineType as string || req.query.engine as string || "flutter").toLowerCase().replace(/_/g, '-');
 
@@ -802,100 +868,114 @@ app.post("/api/build-apk", async (req, res) => {
     const name = appName || "Web2App";
     const cleanName = name.replace(/[^a-zA-Z0-9_-]/g, "_");
     const engine = (engineType || config?.engineType || "flutter").toLowerCase();
-    const pkg = packageName || config?.packageName || "com.jooexe.app";
+    const cleanPkg = sanitizePackageName(packageName || config?.packageName || "com.jooexe.app");
     const targetUrl = url || config?.url || "https://web2app.studio";
 
     const buildId = `apk_build_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`;
     const tmpDir = getBuildTmpDir();
     const targetApkPath = path.join(tmpDir, `${cleanName}-${buildId}.apk`);
 
-    // Check if Flutter SDK is installed on server
     const caps = await getVpsCapabilities();
+    const engineTitle = getEngineDisplayName(engine);
+
+    // Initial database record
+    const transactionRecord = {
+      id: buildId,
+      userId: userId || "guest",
+      appName: name,
+      packageName: cleanPkg,
+      engineType: engine,
+      url: targetUrl,
+      filePath: "",
+      fileSize: 0,
+      hasFlutter: caps.hasFlutter,
+      status: caps.hasFlutter ? "building" : "requires_vps_setup",
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+      purgedAt: null,
+      log: caps.hasFlutter ? "Kompilasi di VPS dimulai..." : "SDK belum terpasang di VPS",
+    };
+    sqlDatabaseStore.set(buildId, transactionRecord);
 
     if (caps.hasFlutter) {
-      // Real Flutter compilation on VPS
+      // Real background Flutter/Android compilation on VPS
       const projDir = path.join(tmpDir, `proj_${buildId}`);
-      fs.mkdirSync(path.join(projDir, "lib"), { recursive: true });
-      fs.mkdirSync(path.join(projDir, "android/app/src/main"), { recursive: true });
+      const env = getAugmentedEnv();
 
-      const cfg = { appName: name, packageName: pkg, url: targetUrl };
-      fs.writeFileSync(path.join(projDir, "pubspec.yaml"), getFlutterPubspec(cfg));
-      fs.writeFileSync(path.join(projDir, "lib/main.dart"), getFlutterMainDart(cfg));
-      fs.writeFileSync(path.join(projDir, "android/app/src/main/AndroidManifest.xml"), getFlutterAndroidManifest(cfg));
+      const orgName = cleanPkg.split('.').slice(0, -1).join('.') || 'com.jooexe';
+      const projName = (cleanPkg.split('.').pop() || 'app').replace(/[^a-z0-9_]/g, '_').replace(/^([0-9])/, 'app_$1');
 
-      exec(`cd "${projDir}" && flutter pub get && flutter build apk --release`, (err) => {
-        const compiledApk = path.join(projDir, "build/app/outputs/flutter-apk/app-release.apk");
-        let finalSize = 0;
-        let isSuccess = false;
+      // Create standard Flutter project scaffolding via flutter create
+      exec(`flutter create --template=app --org "${orgName}" --project-name "${projName}" "${projDir}"`, { env }, (_cErr) => {
+        fs.mkdirSync(path.join(projDir, "lib"), { recursive: true });
+        fs.mkdirSync(path.join(projDir, "android/app/src/main"), { recursive: true });
 
-        if (!err && fs.existsSync(compiledApk)) {
-          fs.copyFileSync(compiledApk, targetApkPath);
-          finalSize = fs.statSync(targetApkPath).size;
-          isSuccess = true;
-        }
+        const cfg = { appName: name, packageName: cleanPkg, url: targetUrl };
+        fs.writeFileSync(path.join(projDir, "pubspec.yaml"), getFlutterPubspec(cfg));
+        fs.writeFileSync(path.join(projDir, "lib/main.dart"), getFlutterMainDart(cfg));
+        fs.writeFileSync(path.join(projDir, "android/app/src/main/AndroidManifest.xml"), getFlutterAndroidManifest(cfg));
 
-        const transactionRecord = {
-          id: buildId,
-          userId: userId || "guest",
-          appName: name,
-          packageName: pkg,
-          engineType: engine,
-          url: targetUrl,
-          filePath: isSuccess ? targetApkPath : "",
-          fileSize: finalSize,
-          hasFlutter: true,
-          status: isSuccess ? "compiled_ready" : "compilation_failed",
-          createdAt: new Date().toISOString(),
-          purgedAt: null,
-        };
-        sqlDatabaseStore.set(buildId, transactionRecord);
+        exec(`cd "${projDir}" && flutter pub get && flutter build apk --release --no-tree-shake-icons`, { env }, (err, stdout, stderr) => {
+          const releaseApk = path.join(projDir, "build/app/outputs/flutter-apk/app-release.apk");
+          const debugApk = path.join(projDir, "build/app/outputs/flutter-apk/app-debug.apk");
+          const generalApk = path.join(projDir, "build/app/outputs/apk/release/app-release.apk");
+
+          let compiledApk = "";
+          if (fs.existsSync(releaseApk) && fs.statSync(releaseApk).size > 100000) {
+            compiledApk = releaseApk;
+          } else if (fs.existsSync(debugApk) && fs.statSync(debugApk).size > 100000) {
+            compiledApk = debugApk;
+          } else if (fs.existsSync(generalApk) && fs.statSync(generalApk).size > 100000) {
+            compiledApk = generalApk;
+          }
+
+          let finalSize = 0;
+          let isSuccess = false;
+
+          if (compiledApk) {
+            fs.copyFileSync(compiledApk, targetApkPath);
+            finalSize = fs.statSync(targetApkPath).size;
+            isSuccess = true;
+          }
+
+          const updatedRecord = {
+            ...transactionRecord,
+            filePath: isSuccess ? targetApkPath : "",
+            fileSize: finalSize,
+            status: isSuccess ? "compiled_ready" : "compilation_failed",
+            updatedAt: new Date().toISOString(),
+            log: isSuccess ? "Build berhasil" : (stderr || stdout || "Gagal mengompilasi APK di VPS"),
+          };
+          sqlDatabaseStore.set(buildId, updatedRecord);
+        });
       });
-
-      const engineTitle = getEngineDisplayName(engine);
 
       return res.json({
         success: true,
         buildId,
         appName: name,
-        packageName: pkg,
+        packageName: cleanPkg,
         engineType: engine,
         engineTitle,
         hasFlutter: true,
+        status: "building",
         downloadUrl: `/api/build-apk/download/${buildId}`,
-        zipExportUrl: `/api/export-zip?appName=${encodeURIComponent(name)}&packageName=${encodeURIComponent(pkg)}&engineType=${encodeURIComponent(engine)}&url=${encodeURIComponent(targetUrl)}`,
+        zipExportUrl: `/api/export-zip?appName=${encodeURIComponent(name)}&packageName=${encodeURIComponent(cleanPkg)}&engineType=${encodeURIComponent(engine)}&url=${encodeURIComponent(targetUrl)}`,
         message: `Proses kompilasi Engine Native (${engineTitle}) telah dimulai di server VPS.`,
       });
 
     } else {
-      // Build engine tools not yet installed on this server instance
-      const engineTitle = getEngineDisplayName(engine);
-      const transactionRecord = {
-        id: buildId,
-        userId: userId || "guest",
-        appName: name,
-        packageName: pkg,
-        engineType: engine,
-        url: targetUrl,
-        filePath: "",
-        fileSize: 0,
-        hasFlutter: false,
-        status: "requires_vps_setup",
-        createdAt: new Date().toISOString(),
-        purgedAt: null,
-      };
-
-      sqlDatabaseStore.set(buildId, transactionRecord);
-
       return res.json({
         success: true,
         buildId,
         appName: name,
-        packageName: pkg,
+        packageName: cleanPkg,
         engineType: engine,
         engineTitle,
         hasFlutter: false,
+        status: "requires_vps_setup",
         downloadUrl: `/api/build-apk/download/${buildId}`,
-        zipExportUrl: `/api/export-zip?appName=${encodeURIComponent(name)}&packageName=${encodeURIComponent(pkg)}&engineType=${encodeURIComponent(engine)}&url=${encodeURIComponent(targetUrl)}`,
+        zipExportUrl: `/api/export-zip?appName=${encodeURIComponent(name)}&packageName=${encodeURIComponent(cleanPkg)}&engineType=${encodeURIComponent(engine)}&url=${encodeURIComponent(targetUrl)}`,
         message: `Kompilasi Engine Native (${engineTitle}) memerlukan SDK di VPS ini. Gunakan ./setup_vps.sh di VPS Anda untuk mengaktifkan kompilasi otomatis, atau unduh Source Code (${engineTitle}) (.zip).`,
       });
     }
@@ -906,10 +986,31 @@ app.post("/api/build-apk", async (req, res) => {
   }
 });
 
-// 2. GET /api/build-apk/download/:buildId : Stream real APK file or render clear VPS Guidance Page
+// 1b. GET /api/build-apk/status/:buildId : Poll build progress real-time
+app.get("/api/build-apk/status/:buildId", (req, res) => {
+  const { buildId } = req.params;
+  const record = sqlDatabaseStore.get(buildId) as any;
+
+  if (!record) {
+    return res.status(404).json({ success: false, status: "not_found", message: "Build ID tidak ditemukan" });
+  }
+
+  return res.json({
+    success: true,
+    buildId: record.id,
+    status: record.status,
+    appName: record.appName,
+    fileSize: record.fileSize,
+    downloadUrl: `/api/build-apk/download/${record.id}`,
+    hasFlutter: record.hasFlutter,
+    log: record.log || "",
+  });
+});
+
+// 2. GET /api/build-apk/download/:buildId : Stream real APK file or render auto-refreshing progress page
 app.get("/api/build-apk/download/:buildId", (req, res) => {
   const { buildId } = req.params;
-  const record = sqlDatabaseStore.get(buildId);
+  const record = sqlDatabaseStore.get(buildId) as any;
 
   let filePath = record?.filePath;
   let appName = record?.appName || "Web2App";
@@ -917,7 +1018,7 @@ app.get("/api/build-apk/download/:buildId", (req, res) => {
   let engineTitle = getEngineDisplayName(engineType);
   let cleanName = appName.replace(/[^a-zA-Z0-9_-]/g, "_");
 
-  // Check if a real compiled APK exists on disk (size > 100KB)
+  // 1. Check if a real compiled APK exists on disk (size > 100KB)
   if (filePath && fs.existsSync(filePath) && fs.statSync(filePath).size > 100000) {
     const fileSize = fs.statSync(filePath).size;
     res.setHeader("Content-Type", "application/vnd.android.package-archive");
@@ -929,7 +1030,49 @@ app.get("/api/build-apk/download/:buildId", (req, res) => {
     return fileStream.pipe(res);
   }
 
-  // If no real APK exists yet, render clean responsive HTML guidance page instead of corrupt file
+  // 2. If build is currently in progress on VPS
+  if (record?.status === "building") {
+    return res.send(`
+      <!DOCTYPE html>
+      <html lang="id">
+        <head>
+          <meta charset="utf-8">
+          <meta name="viewport" content="width=device-width, initial-scale=1">
+          <meta http-equiv="refresh" content="3">
+          <title>Memproses Kompilasi - ${appName}</title>
+          <style>
+            * { box-sizing: border-box; margin: 0; padding: 0; }
+            body { font-family: system-ui, -apple-system, sans-serif; background: #0f172a; color: #f8fafc; padding: 2rem 1rem; min-height: 100vh; display: flex; align-items: center; justify-content: center; text-align: center; }
+            .card { max-width: 520px; width: 100%; background: #1e293b; border: 1px solid #334155; border-radius: 1rem; padding: 2.5rem 2rem; box-shadow: 0 25px 50px -12px rgba(0,0,0,0.5); }
+            .spinner { width: 50px; height: 50px; border: 4px solid #38bdf8; border-top-color: transparent; border-radius: 50%; animation: spin 1s linear infinite; margin: 0 auto 1.5rem; }
+            @keyframes spin { 100% { transform: rotate(360deg); } }
+            h2 { color: #38bdf8; font-size: 1.35rem; margin-bottom: 0.75rem; }
+            p { color: #94a3b8; font-size: 0.92rem; line-height: 1.6; margin-bottom: 1rem; }
+            .engine-badge { display: inline-block; padding: 0.3rem 0.85rem; background: rgba(56, 189, 248, 0.15); color: #38bdf8; border: 1px solid rgba(56, 189, 248, 0.3); border-radius: 9999px; font-size: 0.8rem; font-weight: 700; margin-bottom: 1.25rem; }
+            .status-box { background: #0f172a; border: 1px solid #334155; border-radius: 0.75rem; padding: 0.85rem; font-family: monospace; font-size: 0.8rem; color: #34d399; margin: 1rem 0; }
+          </style>
+        </head>
+        <body>
+          <div class="card">
+            <div class="spinner"></div>
+            <div class="engine-badge">Engine: ${engineTitle}</div>
+            <h2>⏳ Kompilasi APK Sedang Diproses di VPS</h2>
+            <p>
+              Proses kompilasi Native APK untuk <strong>${appName}</strong> sedang berjalan di server VPS Anda.
+            </p>
+            <div class="status-box">
+              ⚡ Status: VPS Build Engine Active (${engineTitle})
+            </div>
+            <p style="color: #e2e8f0; font-weight: 600;">
+              Halaman ini akan otomatis merefresh dan mengunduh APK begitu kompilasi selesai (Estimasi 20–40 detik).
+            </p>
+          </div>
+        </body>
+      </html>
+    `);
+  }
+
+  // 3. Guidance Page if build failed or VPS setup is required
   const zipUrl = `/api/export-zip?appName=${encodeURIComponent(appName)}&packageName=${encodeURIComponent(record?.packageName || 'com.jooexe.app')}&engineType=${encodeURIComponent(engineType)}&url=${encodeURIComponent(record?.url || 'https://web2app.studio')}`;
 
   return res.send(`
