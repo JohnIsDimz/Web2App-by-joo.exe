@@ -837,6 +837,40 @@ app.get("/api/export-zip", async (req, res) => {
   }
 });
 
+// Endpoint to download FULL Web2App Studio server source zip
+app.get("/api/download-web2app-zip", async (req, res) => {
+  try {
+    const zip = new JSZip();
+    const rootDir = process.cwd();
+
+    function addDirToZip(currentDir: string, relativePath: string) {
+      const files = fs.readdirSync(currentDir);
+      for (const file of files) {
+        if (['node_modules', 'dist', '.git', '.cache', 'build_downloads', 'project.zip'].includes(file)) continue;
+        const fullPath = path.join(currentDir, file);
+        const rel = relativePath ? `${relativePath}/${file}` : file;
+        const stat = fs.statSync(fullPath);
+        if (stat.isDirectory()) {
+          addDirToZip(fullPath, rel);
+        } else {
+          zip.file(rel, fs.readFileSync(fullPath));
+        }
+      }
+    }
+
+    addDirToZip(rootDir, "");
+
+    const zipBuffer = await zip.generateAsync({ type: "nodebuffer" });
+    res.setHeader("Content-Type", "application/zip");
+    res.setHeader("Content-Disposition", 'attachment; filename="web2app-studio-full.zip"');
+    res.setHeader("Content-Length", zipBuffer.length);
+    res.send(zipBuffer);
+  } catch (err: any) {
+    console.error("[Full Zip Export Error]", err);
+    res.status(500).json({ error: "Gagal mendownload source code server: " + err?.message });
+  }
+});
+
 // Background garbage collector: clean build files older than 2 hours
 setInterval(() => {
   try {
