@@ -585,27 +585,27 @@ export const WalletModal: React.FC<WalletModalProps> = ({
                     <ul className="space-y-2 text-xs text-slate-300 mb-6">
                       <li className="flex items-center gap-2">
                         <Check className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
-                        <span><strong>Engine PWA Standalone</strong> Gratis</span>
+                        <span>Web2App Live Simulator & Preview</span>
                       </li>
                       <li className="flex items-center gap-2">
                         <Check className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
-                        <span>Analisa URL & Live App Preview</span>
+                        <span>Analisa URL & Auto HTTPS Proxy</span>
                       </li>
                       <li className="flex items-center gap-2">
                         <Check className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
-                        <span>SSL Proxy Auto HTTPS</span>
+                        <span>Standard Configurator (Nama, Icon, Splash)</span>
                       </li>
                       <li className="flex items-center gap-2 text-slate-500">
                         <X className="w-3.5 h-3.5 shrink-0 text-rose-400" />
-                        <span>0 Token Awal (Perlu Top Up / Beli Token)</span>
+                        <span>0 Token Build (Perlu Top Up / Beli Paket)</span>
                       </li>
                       <li className="flex items-center gap-2 text-slate-500">
                         <X className="w-3.5 h-3.5 shrink-0 text-rose-400" />
-                        <span>Engine Native (Android/iOS) Terkunci</span>
+                        <span>Kompilasi Release APK Terkunci</span>
                       </li>
                       <li className="flex items-center gap-2 text-slate-500">
                         <X className="w-3.5 h-3.5 shrink-0 text-rose-400" />
-                        <span>Download Source Code ZIP Terkunci</span>
+                        <span>Injeksi Custom Code & Export ZIP Terkunci</span>
                       </li>
                     </ul>
                   </div>
@@ -644,7 +644,15 @@ export const WalletModal: React.FC<WalletModalProps> = ({
                       </li>
                       <li className="flex items-center gap-2">
                         <Check className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
-                        <span><strong>Engine Starter</strong> (Android, iOS, Cordova, PWA)</span>
+                        <span><strong>Native Shell Engine</strong> (60FPS Native)</span>
+                      </li>
+                      <li className="flex items-center gap-2">
+                        <Check className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
+                        <span>Kompilasi Release APK Cloud Server</span>
+                      </li>
+                      <li className="flex items-center gap-2">
+                        <Check className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
+                        <span>Nav Bar, Drawer, Toolbar & Splash</span>
                       </li>
                       <li className="flex items-center gap-2">
                         <Check className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
@@ -652,11 +660,7 @@ export const WalletModal: React.FC<WalletModalProps> = ({
                       </li>
                       <li className="flex items-center gap-2 text-slate-500">
                         <X className="w-3.5 h-3.5 shrink-0 text-rose-400" />
-                        <span>Engine Flutter, Jetpack, Swift, Tauri (Perlu 30k)</span>
-                      </li>
-                      <li className="flex items-center gap-2 text-slate-500">
-                        <X className="w-3.5 h-3.5 shrink-0 text-rose-400" />
-                        <span>Custom CSS & JS Injections Terkunci</span>
+                        <span>Custom CSS & JS Injections Terkunci (Perlu 30k)</span>
                       </li>
                       <li className="flex items-center gap-2 text-slate-500">
                         <X className="w-3.5 h-3.5 shrink-0 text-rose-400" />
@@ -704,27 +708,31 @@ export const WalletModal: React.FC<WalletModalProps> = ({
                     <ul className="space-y-2 text-xs text-slate-300 mb-6">
                       <li className="flex items-center gap-2">
                         <Check className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
-                        <span><strong>60 Token Build</strong> / bulan</span>
+                        <span><strong>60 Token Build</strong> / bulan + Fast Queue</span>
                       </li>
                       <li className="flex items-center gap-2">
                         <Check className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
-                        <span><strong>Flutter 3.x, Kotlin, Swift, React Native, Tauri</strong></span>
+                        <span><strong>Native Shell Engine</strong> (60FPS Ultra Fast)</span>
                       </li>
                       <li className="flex items-center gap-2">
                         <Check className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
-                        <span>Custom CSS & JavaScript Injections</span>
+                        <span><strong>Download Source Code (.zip)</strong> Lintas Platform</span>
                       </li>
                       <li className="flex items-center gap-2">
                         <Check className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
-                        <span><strong>Download Source Code (.zip)</strong></span>
+                        <span><strong>Injeksi Custom CSS & JavaScript</strong></span>
                       </li>
                       <li className="flex items-center gap-2">
                         <Check className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
-                        <span>Push Notifications (OneSignal API)</span>
+                        <span>OneSignal Push Notifications API</span>
                       </li>
-                      <li className="flex items-center gap-2 text-slate-500">
-                        <X className="w-3.5 h-3.5 shrink-0 text-rose-400" />
-                        <span>KMP, HarmonyOS, & Native Plugins (Perlu 60k)</span>
+                      <li className="flex items-center gap-2">
+                        <Check className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
+                        <span>AdMob Banner, Interstitial & Rewarded Ads</span>
+                      </li>
+                      <li className="flex items-center gap-2">
+                        <Check className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
+                        <span>White-label Branding & Custom Splash</span>
                       </li>
                     </ul>
                   </div>
@@ -764,27 +772,27 @@ export const WalletModal: React.FC<WalletModalProps> = ({
                     <ul className="space-y-2 text-xs text-slate-300 mb-6">
                       <li className="flex items-center gap-2">
                         <Check className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
-                        <span><strong>150 Token Build</strong> / bln + VIP Priority Queue</span>
+                        <span><strong>150 Token Build</strong> / bln + VIP Priority Pipeline</span>
                       </li>
                       <li className="flex items-center gap-2">
                         <Check className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
-                        <span><strong>Akses SEMUA Multi-Engine</strong> (KMP, HarmonyOS, Electron, Flutter)</span>
+                        <span><strong>Native Shell Engine</strong> High-Performance</span>
                       </li>
                       <li className="flex items-center gap-2">
                         <Check className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
-                        <span>Custom C++/Rust Native Plugins</span>
+                        <span>Dedicated High-Speed Cloud Compiler Server</span>
                       </li>
                       <li className="flex items-center gap-2">
                         <Check className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
-                        <span>Unlimited Release Builds & ZIP Export</span>
+                        <span>Unlimited Release Builds & ZIP Source Export</span>
                       </li>
                       <li className="flex items-center gap-2">
                         <Check className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
-                        <span>Pterodactyl Dedicated VPS Compiler</span>
+                        <span>Full Custom CSS, JS & Bridge Callbacks</span>
                       </li>
                       <li className="flex items-center gap-2">
                         <Check className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
-                        <span>White-label Custom App Branding</span>
+                        <span>Prioritas Dukungan Teknis 24/7 & Consultation</span>
                       </li>
                     </ul>
                   </div>

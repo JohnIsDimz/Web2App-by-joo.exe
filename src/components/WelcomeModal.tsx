@@ -38,7 +38,7 @@ export const WelcomeModal: React.FC<WelcomeModalProps> = ({
   tokens = 0,
   subscriptionPlan = 'Free',
   activeAppName = 'Web2App Project',
-  engineType = 'flutter',
+  engineType = 'native-shell',
   isAdmin = false,
 }) => {
   if (!isOpen) return null;
@@ -141,10 +141,10 @@ export const WelcomeModal: React.FC<WelcomeModalProps> = ({
                   <div className="p-3.5 rounded-xl bg-slate-950/80 border border-slate-800/80 hover:border-slate-700 transition-all">
                     <div className="flex items-center gap-2 mb-1.5">
                       <Cpu className="w-4 h-4 text-purple-400" />
-                      <span className="text-xs font-bold text-white">2. 11 Multi-Engine Native</span>
+                      <span className="text-xs font-bold text-white">2. Native Shell Engine</span>
                     </div>
                     <p className="text-[11px] text-slate-400 leading-relaxed">
-                      Bebas pilih Flutter, Kotlin Multiplatform (KMP), Hotwire Turbo Native, HarmonyOS, Electron, & Swift.
+                      Engine Native Shell tunggal berkinerja tinggi, super cepat 60FPS, &amp; stabil tanpa konflik.
                     </p>
                   </div>
 
@@ -241,7 +241,7 @@ export const WelcomeModal: React.FC<WelcomeModalProps> = ({
               <div className="p-3 rounded-xl bg-sky-950/30 border border-sky-500/20 text-xs text-sky-200/90 flex items-start gap-2.5">
                 <FileText className="w-4 h-4 text-sky-400 shrink-0 mt-0.5" />
                 <p className="leading-relaxed">
-                  <strong className="text-white">Tips:</strong> Butuh kompilasi APK/AAB atau ingin mencoba engine baru seperti Kotlin Multiplatform (KMP) atau HarmonyOS? Anda dapat menggantinya kapan saja di tab <span className="underline">Configurator</span>.
+                  <strong className="text-white">Tips:</strong> Butuh kompilasi APK/AAB? Anda dapat langsung menjalankannya di tab <span className="underline">Code &amp; Ekspor</span>.
                 </p>
               </div>
             </>

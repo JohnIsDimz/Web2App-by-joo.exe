@@ -411,8 +411,8 @@ export const EmailModal: React.FC<EmailModalProps> = ({
                       </p>
                       <div className="bg-slate-950 p-3 rounded-lg border border-slate-800 space-y-1.5 text-[11px]">
                         <p className="text-indigo-400 font-bold">Fitur Baru yang Tersedia:</p>
-                        <p className="text-slate-300">✅ Tambahan Dukungan Engine: <strong>Kotlin Multiplatform (KMP)</strong> & <strong>HarmonyOS Native</strong>.</p>
-                        <p className="text-slate-300">✅ Kecepatan Kompilasi APK Flutter 2x Lebih Cepat via VPS Pterodactyl CI.</p>
+                        <p className="text-slate-300">✅ Mesin Baru: <strong>Web2App Native Shell Engine 60FPS</strong> Super Cepat & Stabil.</p>
+                        <p className="text-slate-300">✅ Kecepatan Kompilasi Release APK 2x Lebih Cepat di Server Cloud.</p>
                         <p className="text-slate-300">✅ Fitur Cloud Auto-Sync & Real-Time Encryption Vault.</p>
                       </div>
                     </div>
@@ -459,7 +459,7 @@ export const EmailModal: React.FC<EmailModalProps> = ({
                     <div className="space-y-3">
                       <h3 className="text-sm font-bold text-purple-300">🎁 Penawaran Spesial: Paket Pro Builder & Bonus Token!</h3>
                       <p className="text-slate-300 leading-relaxed">
-                        Kabar gembira {recipientName}! Tingkatkan paket ke <strong>Pro Builder (Rp 30.000 / bulan)</strong> dan dapatkan bonus bulanan <strong>25 Token Build</strong> + Akses KMP & Custom Code Ingestion.
+                        Kabar gembira {recipientName}! Tingkatkan paket ke <strong>Pro Builder (Rp 30.000 / bulan)</strong> dan dapatkan bonus bulanan <strong>60 Token Build</strong> + Akses Injeksi Custom Code & Export Source ZIP.
                       </p>
                       <div className="bg-purple-500/10 border border-purple-500/30 p-3 rounded-lg text-purple-200 text-[11px]">
                         <p className="font-bold">Gunakan Kode Voucher:</p>

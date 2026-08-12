@@ -22,7 +22,7 @@ export interface SupportedPlatforms {
   linux?: boolean;
 }
 
-export type EngineType = 'flutter' | 'kotlin' | 'swift' | 'capacitor' | 'react-native' | 'android-webview' | 'ios-webview' | 'cordova' | 'kmp' | 'turbo-native';
+export type EngineType = 'native-shell';
 
 export interface AppConfig {
   id: string;

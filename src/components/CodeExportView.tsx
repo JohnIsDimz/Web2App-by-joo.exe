@@ -164,46 +164,12 @@ export const CodeExportView: React.FC<CodeExportViewProps> = ({
     }
   }, []);
 
-  const getTabsForEngine = (engineType?: string) => {
-    const e = (engineType || 'flutter').toLowerCase().replace(/_/g, '-');
-    if (e.includes('react-native') || e.includes('expo')) {
-      return [
-        { id: 'App.tsx', name: 'App.tsx', icon: FileCode },
-        { id: 'package.json', name: 'package.json', icon: FileText },
-        { id: 'AndroidManifest.xml', name: 'AndroidManifest.xml', icon: Smartphone },
-        { id: 'README.md', name: 'README.md', icon: FileText },
-      ];
-    }
-    if (e.includes('capacitor') || e.includes('cordova')) {
-      return [
-        { id: 'capacitor.config.json', name: 'capacitor.config.json', icon: FileCode },
-        { id: 'package.json', name: 'package.json', icon: FileText },
-        { id: 'AndroidManifest.xml', name: 'AndroidManifest.xml', icon: Smartphone },
-        { id: 'README.md', name: 'README.md', icon: FileText },
-      ];
-    }
-    if (e.includes('kotlin') || e.includes('webview') || e.includes('android')) {
-      return [
-        { id: 'MainActivity.kt', name: 'MainActivity.kt', icon: FileCode },
-        { id: 'AndroidManifest.xml', name: 'AndroidManifest.xml', icon: Smartphone },
-        { id: 'build.gradle', name: 'build.gradle', icon: FileText },
-        { id: 'README.md', name: 'README.md', icon: FileText },
-      ];
-    }
-    if (e.includes('pwa')) {
-      return [
-        { id: 'index.html', name: 'index.html', icon: FileCode },
-        { id: 'manifest.json', name: 'manifest.json', icon: FileText },
-        { id: 'sw.js', name: 'sw.js', icon: FileCode },
-        { id: 'README.md', name: 'README.md', icon: FileText },
-      ];
-    }
-    // Default Flutter
+  const getTabsForEngine = (_engineType?: string) => {
     return [
       { id: 'main.dart', name: 'lib/main.dart', icon: FileCode },
-      { id: 'pubspec.yaml', name: 'pubspec.yaml', icon: FileText },
       { id: 'AndroidManifest.xml', name: 'AndroidManifest.xml', icon: Smartphone },
       { id: 'Info.plist', name: 'Info.plist', icon: Smartphone },
+      { id: 'pubspec.yaml', name: 'pubspec.yaml', icon: FileText },
       { id: 'README.md', name: 'README.md', icon: FileText },
     ];
   };
@@ -212,50 +178,26 @@ export const CodeExportView: React.FC<CodeExportViewProps> = ({
   const currentActiveFile = activeFile || tabs[0].id;
 
   const handleStartBuild = async () => {
-    // 1. Strict Authentication Check: Prevent non-logged in users
-    if (!currentUser) {
-      alert("Akses Ditolak: Anda harus Login ke akun Anda terlebih dahulu untuk dapat menggunakan server kompilasi APK!");
-      if (onOpenAuthModal) {
-        onOpenAuthModal();
+    // 1. Token & Subscription Plan Validation if user is logged in
+    if (currentUser) {
+      const isVIP = userProfile?.isAdmin || userProfile?.subscriptionPlan === 'Enterprise' || (currentUser.email && isAdminUser(currentUser.email));
+      const tokens = userProfile?.tokens ?? 0;
+
+      if (!isVIP && tokens < 1) {
+        alert("Token Build Anda telah habis (0 Token). Silakan Top Up Token di Dompet untuk mengompilasi APK!");
+        if (onOpenWalletModal) {
+          onOpenWalletModal();
+        }
+        return;
       }
-      return;
     }
 
-    // 2. Token & Subscription Plan Validation
-    const isVIP = userProfile?.isAdmin || userProfile?.subscriptionPlan === 'Enterprise' || (currentUser.email && isAdminUser(currentUser.email));
-    const tokens = userProfile?.tokens ?? 0;
-
-    if (!isVIP && tokens < 1) {
-      alert("Token Build Anda telah habis (0 Token). Silakan Top Up Token di Dompet untuk mengompilasi APK!");
-      if (onOpenWalletModal) {
-        onOpenWalletModal();
-      }
-      return;
-    }
-
-    // Initiate the build request pipeline
+    // Initiate the build request pipeline seamlessly
     startRealtimeApkBuild();
   };
 
-  const getEngineLabel = (engineType?: string) => {
-    const e = (engineType || 'flutter').toLowerCase().replace(/_/g, '-');
-    switch (e) {
-      case 'pwa-shell': return 'PWA Standalone WebShell';
-      case 'android-webview': return 'Android WebView Shell (Java/Kotlin)';
-      case 'ios-webview': return 'iOS Swift WKWebView Shell';
-      case 'cordova': return 'Apache Cordova Hybrid Engine';
-      case 'flutter': return 'Flutter 3.x Native Engine';
-      case 'kotlin': return 'Android Jetpack Compose (Kotlin)';
-      case 'swift': return 'iOS SwiftUI Native Engine';
-      case 'capacitor': return 'Capacitor Hybrid Engine';
-      case 'react-native': return 'React Native / Expo Engine';
-      case 'tauri': return 'Tauri 2.0 Rust Engine';
-      case 'kmp': return 'Kotlin Multiplatform (KMP)';
-      case 'turbo-native': return 'Turbo Native Engine';
-      case 'harmony-os': return 'HarmonyOS ArkUI Engine';
-      case 'electron-pro': return 'Electron Pro Desktop Shell';
-      default: return `${engineType ? engineType.toUpperCase() : 'Native'} Engine`;
-    }
+  const getEngineLabel = (_engineType?: string) => {
+    return 'Web2App Native Shell Engine';
   };
 
   const currentEngineTitle = getEngineLabel(config.engineType);
@@ -310,12 +252,6 @@ export const CodeExportView: React.FC<CodeExportViewProps> = ({
   };
 
   const startRealtimeApkBuild = async () => {
-    if (!currentUser) {
-      alert("Akses Ditolak: Anda wajib Login terlebih dahulu!");
-      if (onOpenAuthModal) onOpenAuthModal();
-      return;
-    }
-
     const engine = (config.engineType || 'flutter').toUpperCase();
     setIsBuildingApk(true);
     setApkBuilt(false);
@@ -378,8 +314,8 @@ export const CodeExportView: React.FC<CodeExportViewProps> = ({
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          userId: currentUser.uid,
-          userEmail: currentUser.email,
+          userId: currentUser?.uid || "guest_user",
+          userEmail: currentUser?.email || "guest@web2app.studio",
           appName: config.appName,
           packageName: config.packageName,
           engineType: config.engineType,
@@ -559,7 +495,7 @@ export const CodeExportView: React.FC<CodeExportViewProps> = ({
         <div>
           <h3 className="text-base sm:text-xl font-bold text-white flex items-center gap-2 leading-snug">
             <Code className="w-5 h-5 text-sky-400 shrink-0" />
-            <span>Proyek Web2App Real-Time Multi-Engine</span>
+            <span>Proyek Web2App Native Engine</span>
           </h3>
           <p className="text-xs text-slate-300 mt-1 max-w-2xl">
             Proyek Native dengan mesin <strong className="text-sky-300">{currentEngineTitle}</strong> siap kompilasi production untuk APK Android, iOS, & Desktop. Jalankan pipeline builder real-time di server cloud.

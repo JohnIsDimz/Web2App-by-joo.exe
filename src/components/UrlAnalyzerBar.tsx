@@ -77,7 +77,7 @@ export const UrlAnalyzerBar: React.FC<UrlAnalyzerBarProps> = ({
         <button
           type="submit"
           disabled={isAnalyzing}
-          className="flex items-center justify-center gap-2 px-6 py-3 bg-sky-500 hover:bg-sky-400 text-slate-950 font-bold rounded-xl text-sm shadow-lg shadow-sky-500/20 transition-all active:scale-95 disabled:opacity-50 shrink-0"
+          className="flex items-center justify-center gap-2 px-6 py-3 bg-sky-500 hover:bg-sky-400 text-slate-950 font-bold rounded-xl text-sm shadow-lg shadow-sky-500/20 transition-all active:scale-95 disabled:opacity-50 shrink-0 cursor-pointer"
         >
           {isAnalyzing ? (
             <>
@@ -86,7 +86,7 @@ export const UrlAnalyzerBar: React.FC<UrlAnalyzerBarProps> = ({
             </>
           ) : (
             <>
-              <span>Konversi Ke App</span>
+              <span>Analisis Site</span>
               <ArrowRight className="w-4 h-4" />
             </>
           )}

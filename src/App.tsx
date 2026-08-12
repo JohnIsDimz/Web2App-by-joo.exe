@@ -25,7 +25,7 @@ const DEFAULT_CONFIG: AppConfig = {
   packageName: 'com.jooexe.shopmax',
   version: '1.0.0',
   author: 'joo.exe',
-  engineType: 'flutter',
+  engineType: 'native-shell',
   themeColor: '#EE4D2D',
   accentColor: '#FF6B00',
   backgroundColor: '#FAFAFA',
