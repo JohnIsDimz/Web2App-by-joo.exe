@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { X, Mail, Send, CheckCircle2, AlertCircle, Eye, Sparkles, Shield, Wrench, Key, Gift, RefreshCw, Smartphone, ExternalLink } from 'lucide-react';
+import { X, Mail, Send, CheckCircle2, AlertCircle, Eye, FileText, Shield, Wrench, Key, Gift, RefreshCw, Smartphone, ExternalLink } from 'lucide-react';
 import { User } from 'firebase/auth';
 import { UserProfileData } from '../lib/firebase';
 
@@ -154,7 +154,7 @@ export const EmailModal: React.FC<EmailModalProps> = ({
                     : 'bg-slate-950/60 border-slate-800 text-slate-400 hover:text-slate-200 hover:border-slate-700'
                 }`}
               >
-                <Sparkles className="w-4 h-4 text-sky-400" />
+                <FileText className="w-4 h-4 text-sky-400" />
                 <span className="font-bold text-[11px] text-center">Selamat Datang</span>
               </button>
 

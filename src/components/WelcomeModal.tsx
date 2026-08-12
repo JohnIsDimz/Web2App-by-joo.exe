@@ -1,19 +1,19 @@
 import React from 'react';
 import { 
   X, 
-  Sparkles, 
+  FileText, 
   CheckCircle2, 
   Globe, 
   Cpu, 
   Smartphone, 
   Cloud, 
-  Zap, 
   Download, 
   ShieldCheck, 
   Wallet,
   ArrowRight,
   Layers,
-  Award
+  Award,
+  Coins
 } from 'lucide-react';
 
 interface WelcomeModalProps {
@@ -62,7 +62,7 @@ export const WelcomeModal: React.FC<WelcomeModalProps> = ({
                 ? 'bg-sky-500/10 border-sky-500/30 text-sky-400' 
                 : 'bg-emerald-500/10 border-emerald-500/30 text-emerald-400'
             }`}>
-              {isVIPAdmin ? <Award className="w-6 h-6 text-amber-400 animate-bounce" /> : isNewUser ? <Sparkles className="w-6 h-6 animate-pulse" /> : <Zap className="w-6 h-6" />}
+              {isVIPAdmin ? <Award className="w-6 h-6 text-amber-400 animate-bounce" /> : isNewUser ? <FileText className="w-6 h-6 animate-pulse" /> : <FileText className="w-6 h-6" />}
             </div>
             <div>
               <div className="flex items-center gap-2">
@@ -198,7 +198,7 @@ export const WelcomeModal: React.FC<WelcomeModalProps> = ({
                   <div className="p-2.5 bg-slate-950/80 border border-slate-800 rounded-lg">
                     <div className="text-[10px] text-slate-400 mb-0.5">Sisa Token Build</div>
                     <div className={`font-bold text-sm flex items-center gap-1 ${tokens > 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
-                      <Zap className={`w-3.5 h-3.5 ${tokens > 0 ? 'fill-emerald-400' : 'fill-rose-400'}`} />
+                      <Coins className={`w-3.5 h-3.5 ${tokens > 0 ? 'text-emerald-400' : 'text-rose-400'}`} />
                       <span>{tokens} Token</span>
                     </div>
                   </div>
@@ -229,10 +229,6 @@ export const WelcomeModal: React.FC<WelcomeModalProps> = ({
                     <span className="text-xs font-bold text-white">{activeAppName}</span>
                   </div>
                   <div className="flex items-center justify-between">
-                    <span className="text-xs text-slate-400">Engine Utama:</span>
-                    <span className="text-xs font-mono font-bold text-purple-300 uppercase">{engineType}</span>
-                  </div>
-                  <div className="flex items-center justify-between">
                     <span className="text-xs text-slate-400">Penyimpanan:</span>
                     <span className="text-xs font-semibold text-emerald-400 flex items-center gap-1">
                       <CheckCircle2 className="w-3 h-3" /> Auto-Synced Cloud
@@ -243,7 +239,7 @@ export const WelcomeModal: React.FC<WelcomeModalProps> = ({
 
               {/* Quick Tip */}
               <div className="p-3 rounded-xl bg-sky-950/30 border border-sky-500/20 text-xs text-sky-200/90 flex items-start gap-2.5">
-                <Sparkles className="w-4 h-4 text-sky-400 shrink-0 mt-0.5" />
+                <FileText className="w-4 h-4 text-sky-400 shrink-0 mt-0.5" />
                 <p className="leading-relaxed">
                   <strong className="text-white">Tips:</strong> Butuh kompilasi APK/AAB atau ingin mencoba engine baru seperti Kotlin Multiplatform (KMP) atau HarmonyOS? Anda dapat menggantinya kapan saja di tab <span className="underline">Configurator</span>.
                 </p>

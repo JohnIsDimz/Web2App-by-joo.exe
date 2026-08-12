@@ -1,5 +1,5 @@
 import React from 'react';
-import { Smartphone, Code, Cpu, Download, FolderSync, ShieldCheck, Wallet, Zap, Cloud, RefreshCw, AlertCircle } from 'lucide-react';
+import { Smartphone, Code, Cpu, Download, FolderSync, ShieldCheck, Wallet, Cloud, RefreshCw, AlertCircle, Coins } from 'lucide-react';
 import { User } from 'firebase/auth';
 import { UserProfileData } from '../lib/firebase';
 
@@ -164,7 +164,7 @@ export const Header: React.FC<HeaderProps> = ({
                 <span>{formattedBalance}</span>
                 <span>•</span>
                 <span className="text-amber-400 flex items-center gap-0.5">
-                  <Zap className="w-3 h-3 fill-amber-400" />
+                  <Coins className="w-3 h-3 text-amber-400" />
                   {tokensCount}
                 </span>
               </div>

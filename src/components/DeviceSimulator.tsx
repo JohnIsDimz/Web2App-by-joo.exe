@@ -8,7 +8,6 @@ import {
   RefreshCw,
   ArrowLeft,
   ArrowRight,
-  Sparkles,
   Play,
   Share2,
   Lock,
@@ -415,11 +414,7 @@ export const DeviceSimulator: React.FC<DeviceSimulatorProps> = ({
         </div>
       </div>
 
-      {/* Info Note */}
-      <div className="mt-4 flex items-center gap-2 text-xs text-slate-300 bg-slate-900/80 px-4 py-2 rounded-xl border border-slate-800">
-        <Sparkles className="w-4 h-4 text-emerald-400 shrink-0" />
-        <span>Tampilan Real-Time di atas ditenagai oleh Live Web Proxy Web2App, menampilkan isi website secara utuh dan responsif.</span>
-      </div>
+
     </div>
   );
 };

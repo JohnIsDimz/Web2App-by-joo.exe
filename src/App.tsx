@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { Crown, ShieldCheck, FileText } from 'lucide-react';
 import { User } from 'firebase/auth';
 import { Header } from './components/Header';
 import { UrlAnalyzerBar } from './components/UrlAnalyzerBar';
@@ -50,11 +51,11 @@ const DEFAULT_CONFIG: AppConfig = {
   },
   supportedPlatforms: {
     android: true,
-    ios: true,
-    web: true,
-    windows: true,
-    macos: true,
-    linux: true,
+    ios: false,
+    web: false,
+    windows: false,
+    macos: false,
+    linux: false,
   },
   enableJsBridge: true,
   enableBackButtonHandling: true,
@@ -104,6 +105,20 @@ export default function App() {
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
   const [isWalletModalOpen, setIsWalletModalOpen] = useState(false);
   const [isSecurityModalOpen, setIsSecurityModalOpen] = useState(false);
+  const [expiredSubNotice, setExpiredSubNotice] = useState<{ isOpen: boolean; oldPlan: string } | null>(null);
+
+  useEffect(() => {
+    const handleSubscriptionExpired = (e: any) => {
+      if (e.detail && e.detail.oldPlan) {
+        setExpiredSubNotice({
+          isOpen: true,
+          oldPlan: e.detail.oldPlan
+        });
+      }
+    };
+    window.addEventListener('w2a_subscription_expired', handleSubscriptionExpired);
+    return () => window.removeEventListener('w2a_subscription_expired', handleSubscriptionExpired);
+  }, []);
 
   const [config, setConfig] = useState<AppConfig>(() => {
     const saved = localStorage.getItem('web2app_config_guest');
@@ -576,6 +591,52 @@ export default function App() {
         engineType={config.engineType}
         isAdmin={userProfile?.isAdmin || (currentUser?.email ? isAdminUser(currentUser.email) : false)}
       />
+
+      {/* Subscription Expired Notice Modal */}
+      {expiredSubNotice?.isOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-md animate-in fade-in duration-200">
+          <div className="relative w-full max-w-md bg-slate-900 border border-slate-800 rounded-2xl shadow-2xl overflow-hidden p-6 text-center space-y-4">
+            <div className="w-14 h-14 mx-auto rounded-2xl bg-amber-500/10 border border-amber-500/30 flex items-center justify-center text-amber-400">
+              <FileText className="w-8 h-8" />
+            </div>
+            
+            <div className="space-y-1">
+              <h3 className="text-lg font-black text-white">Masa Aktif Langganan Berakhir</h3>
+              <p className="text-xs text-amber-400 font-semibold">
+                Masa berlaku Paket {expiredSubNotice.oldPlan} (Rp 15.000 - Rp 60.000 / bulan) Anda telah selesai.
+              </p>
+            </div>
+
+            <div className="p-3 bg-slate-950 rounded-xl border border-slate-800/80 text-left space-y-2 text-xs text-slate-300">
+              <p>
+                Sesuai kebijakan keamanan, akun Anda telah otomatis disesuaikan kembali ke <strong className="text-emerald-400">Paket Gratis (Free Tier)</strong> untuk mencegah perpanjangan atau pemotongan saldo otomatis tanpa persetujuan Anda.
+              </p>
+              <div className="p-2.5 bg-amber-500/10 border border-amber-500/20 rounded-lg text-[11px] text-amber-300/90 flex items-start gap-2">
+                <ShieldCheck className="w-4 h-4 text-amber-400 shrink-0 mt-0.5" />
+                <span>Status akses tanpa batas waktu (lifetime) hanya berlaku khusus untuk Akun Developer VIP Admin.</span>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-2 pt-2">
+              <button
+                onClick={() => setExpiredSubNotice(null)}
+                className="flex-1 py-2.5 px-4 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 font-bold text-xs transition-all"
+              >
+                Gunakan Paket Gratis
+              </button>
+              <button
+                onClick={() => {
+                  setExpiredSubNotice(null);
+                  setIsWalletModalOpen(true);
+                }}
+                className="flex-1 py-2.5 px-4 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 font-black text-xs shadow-lg transition-all"
+              >
+                Perpanjang Langganan
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

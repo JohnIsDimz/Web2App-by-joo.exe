@@ -59,12 +59,73 @@ export interface UserProfileData {
   lastLogin: string;
   createdAt: string;
   isAdmin?: boolean;
+  isNewUser?: boolean;
 }
 
 export function isAdminUser(email?: string | null): boolean {
   if (!email) return false;
   const e = email.toLowerCase().trim();
   return e === 'johnisdimz@gmail.com' || e.includes('admin') || e.includes('developer') || e.includes('joo.exe');
+}
+
+/**
+ * Strict Subscription Expiration Evaluator
+ * Checks whether regular subscriptions (Starter 15k, Pro 30k, Enterprise 60k) have expired.
+ * Developer VIP accounts (isAdmin or matching developer emails) never expire.
+ * Regular users are automatically demoted to 'Free' tier when subscriptionExpiry is passed.
+ */
+export function checkAndAutoExpireSubscription(profile: UserProfileData): UserProfileData {
+  if (!profile) return profile;
+
+  // Developer VIP admin accounts have permanent lifetime access
+  if (profile.isAdmin || isAdminUser(profile.email)) {
+    return {
+      ...profile,
+      isAdmin: true,
+      subscriptionPlan: 'Enterprise',
+      subscriptionExpiry: '2099-12-31T23:59:59.000Z'
+    };
+  }
+
+  // Regular user subscription check
+  if (profile.subscriptionPlan && profile.subscriptionPlan !== 'Free') {
+    const now = new Date().getTime();
+    const expiryTime = profile.subscriptionExpiry ? new Date(profile.subscriptionExpiry).getTime() : 0;
+
+    if (!profile.subscriptionExpiry || now >= expiryTime) {
+      const oldPlan = profile.subscriptionPlan;
+      console.warn(`[SUBSCRIPTION EXPIRED] Plan '${oldPlan}' for user ${profile.email || profile.uid} has expired. Demoting to Free Tier.`);
+
+      const expiredProfile: UserProfileData = {
+        ...profile,
+        subscriptionPlan: 'Free',
+        subscriptionExpiry: null
+      };
+
+      // Background async update to Firestore database
+      try {
+        const userRef = doc(db, 'users', profile.uid);
+        setDoc(userRef, {
+          subscriptionPlan: 'Free',
+          subscriptionExpiry: null
+        }, { merge: true }).catch(err => console.warn("Firestore auto-expire update warning:", err));
+      } catch (e) {}
+
+      // Save demoted session & notify UI
+      saveEncryptedUserSession(expiredProfile);
+
+      // Dispatch event to show popup notification to user
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new CustomEvent('w2a_subscription_expired', {
+          detail: { oldPlan, uid: profile.uid }
+        }));
+      }
+
+      return expiredProfile;
+    }
+  }
+
+  return profile;
 }
 
 export interface UserTransaction {
@@ -92,18 +153,22 @@ export async function signInWithGoogle(): Promise<{ user: User; isNewUser: boole
   } catch (error: any) {
     console.error("Google Sign-In Error:", error);
     const currentHost = typeof window !== 'undefined' ? window.location.hostname : '';
+    const errStr = String(error?.code || error?.message || error);
     
-    if (error.code === 'auth/network-request-failed' || error.message?.includes('network-request-failed')) {
-      throw new Error("Gagal terhubung ke server autentikasi Firebase. Silakan periksa koneksi internet Anda dan coba lagi.");
+    if (errStr.includes('auth/network-request-failed') || errStr.includes('network-request-failed')) {
+      throw new Error("Gagal terhubung ke server autentikasi Firebase (auth/network-request-failed). Jika Anda berada di pratinjau browser/iframe dengan blokir popup, silakan coba login dengan Email & Kata Sandi di bawah ini.");
     }
-    if (error.code === 'auth/operation-not-allowed' || error.message?.includes('operation-not-allowed')) {
+    if (errStr.includes('auth/operation-not-allowed') || errStr.includes('operation-not-allowed')) {
       throw new Error("Metode Google Sign-In belum diaktifkan di Firebase Console. Buka Firebase Console -> Authentication -> Sign-in method -> Tambahkan Provider Google, atau gunakan Email & Kata Sandi di atas.");
     }
-    if (error.code === 'auth/unauthorized-domain' || error.message?.includes('unauthorized-domain')) {
+    if (errStr.includes('auth/unauthorized-domain') || errStr.includes('unauthorized-domain')) {
       throw new Error(`Domain host (${currentHost}) belum didaftarkan di Firebase Console. Buka Authentication -> Settings -> Authorized domains -> Tambahkan '${currentHost}'.`);
     }
-    if (error.code === 'auth/popup-closed-by-user') {
+    if (errStr.includes('auth/popup-closed-by-user') || errStr.includes('popup-closed-by-user')) {
       throw new Error("Jendela login Google ditutup oleh pengguna sebelum selesai.");
+    }
+    if (errStr.includes('auth/popup-blocked') || errStr.includes('popup-blocked')) {
+      throw new Error("Popup login Google diblokir oleh browser. Silakan izinkan popup untuk situs ini atau gunakan Login Email.");
     }
     throw new Error(error.message || "Gagal melakukan verifikasi akun Google.");
   }
@@ -164,7 +229,7 @@ export async function saveUserProfile(user: User): Promise<UserProfileData & { i
       }
 
       await setDoc(userRef, updatedData, { merge: true });
-      return {
+      const mergedProfile: UserProfileData = {
         ...existing,
         ...updatedData,
         tokens: updatedData.tokens ?? existing.tokens ?? 10,
@@ -172,6 +237,7 @@ export async function saveUserProfile(user: User): Promise<UserProfileData & { i
         subscriptionPlan: updatedData.subscriptionPlan ?? existing.subscriptionPlan ?? 'Free',
         isNewUser: false
       };
+      return checkAndAutoExpireSubscription(mergedProfile);
     } else {
       // New User Profile
       const newProfile: UserProfileData = {
@@ -200,7 +266,7 @@ export async function saveUserProfile(user: User): Promise<UserProfileData & { i
         timestamp: new Date().toISOString()
       });
 
-      return { ...newProfile, isNewUser: true };
+      return { ...checkAndAutoExpireSubscription(newProfile), isNewUser: true };
     }
   } catch (err) {
     console.warn("Firestore offline / read profile warning:", err);
@@ -287,9 +353,11 @@ export function subscribeUserProfile(uid: string, callback: (profile: UserProfil
         }
       }
 
+      const verifiedProfile = checkAndAutoExpireSubscription(data);
+
       // Persist to encrypted cookies & instant local storage
-      saveEncryptedUserSession(data);
-      callback(data);
+      saveEncryptedUserSession(verifiedProfile);
+      callback(verifiedProfile);
     } else {
       sendFallback();
     }
@@ -306,15 +374,17 @@ async function getUserProfileSafe(uid: string): Promise<UserProfileData> {
   // 1. Instant 0ms return from local encrypted session cache
   const fastSession = loadEncryptedUserSession(uid);
   if (fastSession && typeof fastSession.balance === 'number') {
+    const verifiedFast = checkAndAutoExpireSubscription(fastSession);
     // Non-blocking background sync with Firestore
     const userRef = doc(db, 'users', uid);
     getDoc(userRef).then((snap) => {
       if (snap.exists()) {
         const remoteData = snap.data() as UserProfileData;
-        saveEncryptedUserSession(remoteData);
+        const verifiedRemote = checkAndAutoExpireSubscription(remoteData);
+        saveEncryptedUserSession(verifiedRemote);
       }
     }).catch(() => {});
-    return fastSession;
+    return verifiedFast;
   }
 
   // 2. Fallback to Firestore with 1.5s timeout race condition
@@ -331,8 +401,9 @@ async function getUserProfileSafe(uid: string): Promise<UserProfileData> {
       if (data.tokens === undefined || data.tokens === null || typeof data.tokens !== 'number') {
         data.tokens = isAdminUser(data.email) ? 50000 : 10;
       }
-      saveEncryptedUserSession(data);
-      return data;
+      const verifiedData = checkAndAutoExpireSubscription(data);
+      saveEncryptedUserSession(verifiedData);
+      return verifiedData;
     }
   } catch (err) {
     console.warn("Firestore getDoc warning (falling back to fast session cache):", err);
@@ -571,7 +642,11 @@ export async function getUserTransactions(uid: string): Promise<UserTransaction[
  */
 export async function signOutUser(): Promise<void> {
   clearEncryptedUserSession();
-  await firebaseSignOut(auth);
+  try {
+    await firebaseSignOut(auth);
+  } catch (err) {
+    console.warn("Sign out warning (cleared session locally):", err);
+  }
 }
 
 /**
@@ -586,16 +661,17 @@ export async function loginWithEmail(email: string, pass: string): Promise<{ use
     return { user, isNewUser };
   } catch (error: any) {
     console.error("Email Login Error:", error);
-    if (error.code === 'auth/network-request-failed' || error.message?.includes('network-request-failed')) {
-      throw new Error("Gagal terhubung ke server autentikasi Firebase. Silakan periksa koneksi internet Anda dan coba lagi.");
+    const errStr = String(error?.code || error?.message || error);
+    if (errStr.includes('auth/network-request-failed') || errStr.includes('network-request-failed')) {
+      throw new Error("Gagal terhubung ke server autentikasi Firebase (auth/network-request-failed). Silakan periksa koneksi internet Anda dan coba lagi.");
     }
-    if (error.code === 'auth/wrong-password' || error.code === 'auth/user-not-found' || error.code === 'auth/invalid-credential') {
+    if (errStr.includes('auth/wrong-password') || errStr.includes('auth/user-not-found') || errStr.includes('auth/invalid-credential')) {
       throw new Error("Email atau kata sandi tidak sesuai.");
     }
-    if (error.code === 'auth/invalid-email') {
+    if (errStr.includes('auth/invalid-email')) {
       throw new Error("Format alamat email tidak valid.");
     }
-    if (error.code === 'auth/too-many-requests') {
+    if (errStr.includes('auth/too-many-requests')) {
       throw new Error("Terlalu banyak percobaan login gagal. Silakan coba lagi beberapa saat lagi.");
     }
     throw new Error(error.message || "Gagal masuk ke akun.");
@@ -614,16 +690,17 @@ export async function registerWithEmail(email: string, pass: string): Promise<{ 
     return { user, isNewUser };
   } catch (error: any) {
     console.error("Email Registration Error:", error);
-    if (error.code === 'auth/network-request-failed' || error.message?.includes('network-request-failed')) {
-      throw new Error("Gagal terhubung ke server autentikasi Firebase. Silakan periksa koneksi internet Anda dan coba lagi.");
+    const errStr = String(error?.code || error?.message || error);
+    if (errStr.includes('auth/network-request-failed') || errStr.includes('network-request-failed')) {
+      throw new Error("Gagal terhubung ke server autentikasi Firebase (auth/network-request-failed). Silakan periksa koneksi internet Anda dan coba lagi.");
     }
-    if (error.code === 'auth/email-already-in-use') {
+    if (errStr.includes('auth/email-already-in-use')) {
       throw new Error("Email sudah terdaftar. Silakan pilih opsi Masuk.");
     }
-    if (error.code === 'auth/weak-password') {
+    if (errStr.includes('auth/weak-password')) {
       throw new Error("Kata sandi terlalu pendek (minimal 6 karakter).");
     }
-    if (error.code === 'auth/invalid-email') {
+    if (errStr.includes('auth/invalid-email')) {
       throw new Error("Format alamat email tidak valid.");
     }
     throw new Error(error.message || "Gagal membuat akun baru.");
@@ -638,13 +715,14 @@ export async function resetUserPassword(email: string): Promise<void> {
     await sendPasswordResetEmail(auth, email);
   } catch (error: any) {
     console.error("Password Reset Error:", error);
-    if (error.code === 'auth/network-request-failed' || error.message?.includes('network-request-failed')) {
+    const errStr = String(error?.code || error?.message || error);
+    if (errStr.includes('auth/network-request-failed') || errStr.includes('network-request-failed')) {
       throw new Error("Gagal terhubung ke server autentikasi Firebase (auth/network-request-failed). Silakan periksa koneksi internet Anda.");
     }
-    if (error.code === 'auth/user-not-found') {
+    if (errStr.includes('auth/user-not-found')) {
       throw new Error("Email tidak ditemukan dalam sistem.");
     }
-    if (error.code === 'auth/invalid-email') {
+    if (errStr.includes('auth/invalid-email')) {
       throw new Error("Format alamat email tidak valid.");
     }
     throw new Error(error.message || "Gagal mengirim email instruksi riset kata sandi.");
@@ -656,7 +734,7 @@ export async function resetUserPassword(email: string): Promise<void> {
  */
 export function onAuthChange(callback: (user: User | null) => void) {
   return onAuthStateChanged(auth, callback, (error) => {
-    console.warn("Firebase Auth state error (network-request-failed handled safely):", error);
-    callback(null);
+    console.warn("Firebase Auth state warning (network handled safely):", error);
+    callback(auth.currentUser || null);
   });
 }

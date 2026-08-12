@@ -10,7 +10,7 @@ import {
   User as UserIcon,
   Eye,
   EyeOff,
-  Sparkles,
+  Smartphone,
   Database,
   Copy,
   Check,

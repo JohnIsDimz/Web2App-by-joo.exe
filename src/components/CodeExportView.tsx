@@ -11,7 +11,6 @@ import {
   Rocket,
   Clock,
   Loader2,
-  Sparkles,
 } from 'lucide-react';
 import { AppConfig } from '../types';
 import {

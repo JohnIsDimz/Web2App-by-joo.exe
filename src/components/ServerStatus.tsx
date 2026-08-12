@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { Server, RefreshCw, AlertTriangle, Zap, CheckCircle2 } from 'lucide-react';
+import { Server, RefreshCw, AlertTriangle, Smartphone, CheckCircle2 } from 'lucide-react';
 
 export function ServerStatus() {
   const [serverState, setServerState] = useState<'loading' | 'online' | 'offline'>('loading');
@@ -68,7 +68,7 @@ export function ServerStatus() {
           </span>
 
           <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-slate-800 text-slate-300 border border-slate-700/60 hidden sm:inline-flex items-center gap-1" title={vpsMsg}>
-            <Zap className="w-2.5 h-2.5 text-emerald-400" />
+            <Smartphone className="w-2.5 h-2.5 text-emerald-400" />
             {engineType}
           </span>
 

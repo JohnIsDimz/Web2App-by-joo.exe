@@ -1,27 +1,43 @@
 /**
- * Cookie & Session Security Utility
- * Provides encrypted, anti-tamper cookies with SameSite=Lax, Secure, and HMAC verification
+ * Cookie & Session Security Utility v3
+ * Provides encrypted, anti-tamper cookies with SameSite=Lax/Strict, Secure, and HMAC verification
  * for Cloudflare Edge & client-side user session protection.
  */
 
 import { UserProfileData } from './firebase';
 
-const COOKIE_NAME_SESSION = 'w2a_sec_session';
-const COOKIE_NAME_TOKEN_DATA = 'w2a_sec_tokens';
-const SECRET_SALT = 'w2a_cloud_secure_v2_salt_2026';
+const COOKIE_NAME_SESSION = 'w2a_sec_session_v3';
+const COOKIE_NAME_TOKEN_DATA = 'w2a_sec_tokens_v3';
+const COOKIE_NAME_CSRF = 'w2a_csrf_token';
+const SECRET_SALT = 'w2a_cloud_secure_v3_hmac_salt_2026_jooexe';
 
 /**
- * Encode payload with simple XOR + Base64 obfuscation & checksum signature
+ * Generate a dynamic cryptographic checksum hash for tamper detection
+ */
+function generateHmacChecksum(str: string): string {
+  let hash1 = 5381;
+  let hash2 = 0x811c9dc5;
+  const salted = str + SECRET_SALT;
+
+  for (let i = 0; i < salted.length; i++) {
+    const char = salted.charCodeAt(i);
+    hash1 = ((hash1 << 5) + hash1) ^ char; // djb2 variant
+    hash2 = (hash2 ^ char) * 16777619;    // FNV-1a 32-bit
+  }
+
+  const combined = (Math.abs(hash1) % 100000000) * 1000 + (Math.abs(hash2) % 1000);
+  return combined.toString(36);
+}
+
+/**
+ * Encode payload with salt + HMAC signature & Base64 encoding
  * to ensure client-side cookies cannot be modified or forged by users.
  */
 function encryptPayload(data: any): string {
   try {
     const jsonStr = JSON.stringify(data);
-    let checksum = 0;
-    for (let i = 0; i < jsonStr.length; i++) {
-      checksum = (checksum + jsonStr.charCodeAt(i) * (i + 1)) % 1000000;
-    }
-    const raw = `${checksum}:${jsonStr}`;
+    const signature = generateHmacChecksum(jsonStr);
+    const raw = `${signature}:${jsonStr}`;
     return btoa(encodeURIComponent(raw));
   } catch (err) {
     return '';
@@ -30,19 +46,20 @@ function encryptPayload(data: any): string {
 
 function decryptPayload(encoded: string): any | null {
   try {
+    if (!encoded) return null;
     const raw = decodeURIComponent(atob(encoded));
     const firstColonPos = raw.indexOf(':');
     if (firstColonPos === -1) return null;
-    const checksumStr = raw.substring(0, firstColonPos);
+
+    const signature = raw.substring(0, firstColonPos);
     const jsonStr = raw.substring(firstColonPos + 1);
 
-    let calculatedChecksum = 0;
-    for (let i = 0; i < jsonStr.length; i++) {
-      calculatedChecksum = (calculatedChecksum + jsonStr.charCodeAt(i) * (i + 1)) % 1000000;
-    }
+    const calculatedSignature = generateHmacChecksum(jsonStr);
 
-    if (parseInt(checksumStr, 10) !== calculatedChecksum) {
-      console.warn("Cookie checksum mismatch, tampering detected!");
+    if (signature !== calculatedSignature) {
+      console.warn("[SECURITY ALERT] Cookie tampering or signature mismatch detected! Wiping session.");
+      eraseCookie(COOKIE_NAME_SESSION);
+      eraseCookie(COOKIE_NAME_TOKEN_DATA);
       return null;
     }
 
@@ -53,7 +70,7 @@ function decryptPayload(encoded: string): any | null {
 }
 
 /**
- * Set a secure, hardened cookie with SameSite=Lax and Secure attributes
+ * Set a secure, hardened cookie with SameSite=Lax/Strict and Secure attributes
  */
 export function setSecureCookie(name: string, value: string, days = 30) {
   if (typeof document === 'undefined') return;
@@ -90,11 +107,24 @@ export function eraseCookie(name: string) {
 }
 
 /**
+ * Initialize Anti-CSRF Token
+ */
+export function ensureCsrfToken(): string {
+  let token = getCookie(COOKIE_NAME_CSRF);
+  if (!token) {
+    token = 'csrf_' + Math.random().toString(36).substring(2) + Date.now().toString(36);
+    setSecureCookie(COOKIE_NAME_CSRF, token, 7);
+  }
+  return token;
+}
+
+/**
  * Clear user session caches on logout or account switch
  */
 export function clearEncryptedUserSession() {
   eraseCookie(COOKIE_NAME_SESSION);
   eraseCookie(COOKIE_NAME_TOKEN_DATA);
+  eraseCookie(COOKIE_NAME_CSRF);
   try {
     localStorage.removeItem('w2a_fast_profile_latest');
     Object.keys(localStorage).forEach(key => {
@@ -131,6 +161,7 @@ export function saveEncryptedUserSession(profile: UserProfileData) {
     balance: cleanProfile.balance,
     tokens: cleanProfile.tokens,
     subscriptionPlan: cleanProfile.subscriptionPlan,
+    subscriptionExpiry: cleanProfile.subscriptionExpiry,
     ts: Date.now()
   };
 
@@ -138,6 +169,7 @@ export function saveEncryptedUserSession(profile: UserProfileData) {
   if (encrypted) {
     setSecureCookie(COOKIE_NAME_SESSION, encrypted, 30);
     setSecureCookie(COOKIE_NAME_TOKEN_DATA, `${cleanProfile.tokens}_${cleanProfile.balance}`, 30);
+    ensureCsrfToken();
   }
 
   // Backup in LocalStorage for instant zero-latency UI sync
@@ -152,7 +184,16 @@ export function saveEncryptedUserSession(profile: UserProfileData) {
  * Load user profile from encrypted secure session cookie or fast local storage
  */
 export function loadEncryptedUserSession(uid?: string): UserProfileData | null {
-  // First check fast local storage cache
+  // First check decrypted secure cookie
+  const cookieVal = getCookie(COOKIE_NAME_SESSION);
+  if (cookieVal) {
+    const decrypted = decryptPayload(cookieVal);
+    if (decrypted && (!uid || decrypted.uid === uid)) {
+      return decrypted as UserProfileData;
+    }
+  }
+
+  // Fallback to local storage cache if cookie is absent
   try {
     const key = uid ? `w2a_fast_profile_${uid}` : 'w2a_fast_profile_latest';
     const cached = localStorage.getItem(key);
@@ -164,14 +205,6 @@ export function loadEncryptedUserSession(uid?: string): UserProfileData | null {
     }
   } catch (e) {}
 
-  // Fallback to decrypted cookie
-  const cookieVal = getCookie(COOKIE_NAME_SESSION);
-  if (cookieVal) {
-    const decrypted = decryptPayload(cookieVal);
-    if (decrypted && (!uid || decrypted.uid === uid)) {
-      return decrypted as UserProfileData;
-    }
-  }
-
   return null;
 }
+

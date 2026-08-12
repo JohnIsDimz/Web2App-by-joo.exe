@@ -2,7 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { 
   X, 
   Wallet, 
-  Zap, 
+  Smartphone, 
+  Coins,
   Crown, 
   PlusCircle, 
   Check, 
@@ -12,7 +13,7 @@ import {
   Building2, 
   AlertCircle, 
   CheckCircle2, 
-  Sparkles,
+  FileText,
   ArrowRight,
   ShieldCheck,
   RefreshCw
@@ -409,7 +410,7 @@ export const WalletModal: React.FC<WalletModalProps> = ({
           <div className="p-2.5 bg-slate-900/90 border border-slate-800 rounded-xl flex flex-col justify-center min-w-0">
             <span className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider block truncate">Saldo Token</span>
             <div className="text-xs sm:text-sm font-black text-amber-400 flex items-center gap-1 font-mono truncate mt-0.5">
-              <Zap className="w-3.5 h-3.5 fill-amber-400 shrink-0" />
+              <Coins className="w-3.5 h-3.5 text-amber-400 shrink-0" />
               <span className="truncate">{tokensCount} Token</span>
             </div>
           </div>
@@ -469,7 +470,7 @@ export const WalletModal: React.FC<WalletModalProps> = ({
                 : 'border-transparent text-slate-400 hover:text-slate-200'
             }`}
           >
-            <Zap className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-amber-400" />
+            <Coins className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-amber-400" />
             <span>Beli Token</span>
           </button>
 
@@ -521,13 +522,44 @@ export const WalletModal: React.FC<WalletModalProps> = ({
             <div className="space-y-4">
               <div className="text-center max-w-lg mx-auto space-y-1">
                 <h4 className="text-base font-bold text-white flex items-center justify-center gap-2">
-                  <Sparkles className="w-4 h-4 text-amber-400" />
+                  <FileText className="w-4 h-4 text-amber-400" />
                   <span>Paket Langganan Bulanan Web2App Studio</span>
                 </h4>
                 <p className="text-xs text-slate-400">
                   Pilih paket sesuai kebutuhan aplikasi Anda. Buka akses engine premium, custom code, & bonus token bulanan!
                 </p>
               </div>
+
+              {/* Status Expiry Banner */}
+              {isAdminUser(userProfile?.email) ? (
+                <div className="p-3 rounded-xl bg-purple-500/10 border border-purple-500/30 flex items-center gap-3 text-purple-200 text-xs">
+                  <Crown className="w-5 h-5 text-purple-400 shrink-0" />
+                  <div>
+                    <span className="font-bold text-white block">Status Lisensi: Developer VIP Admin (Akses Permanen)</span>
+                    <span className="text-[11px] text-purple-300/80">Akun ini memiliki hak akses penuh tanpa batas waktu (lifetime).</span>
+                  </div>
+                </div>
+              ) : currentPlan !== 'Free' ? (
+                <div className="p-3.5 rounded-xl bg-amber-500/10 border border-amber-500/30 flex items-start gap-3 text-amber-200 text-xs">
+                  <AlertCircle className="w-5 h-5 text-amber-400 shrink-0 mt-0.5" />
+                  <div className="space-y-1">
+                    <div className="font-bold text-amber-300 flex items-center gap-2">
+                      <span>Paket {currentPlan} Aktif</span>
+                      {userProfile?.subscriptionExpiry && (
+                        <span className="text-[10px] bg-amber-500/20 px-2 py-0.5 rounded-full border border-amber-500/40 text-amber-200 font-mono">
+                          Masa Aktif Sisa: {Math.max(0, Math.ceil((new Date(userProfile.subscriptionExpiry).getTime() - Date.now()) / (1000 * 60 * 60 * 24)))} Hari
+                        </span>
+                      )}
+                    </div>
+                    <p className="text-[11px] text-slate-300">
+                      Berlaku hingga: <strong className="text-white">{userProfile?.subscriptionExpiry ? new Date(userProfile.subscriptionExpiry).toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : '-'}</strong>
+                    </p>
+                    <p className="text-[11px] text-amber-400/90 italic">
+                      ⚠️ Kebijakan Keamanan Tagihan: Paket langganan reguler (15k - 60k) akan otomatis terhenti dan kembali ke Paket Gratis pas waktunya tiba untuk mencegah perpanjangan atau penarikan saldo secara otomatis.
+                    </p>
+                  </div>
+                </div>
+              ) : null}
 
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 pt-2">
                 
@@ -784,7 +816,7 @@ export const WalletModal: React.FC<WalletModalProps> = ({
             <div className="space-y-4">
               <div className="text-center max-w-md mx-auto space-y-1">
                 <h4 className="text-base font-bold text-white flex items-center justify-center gap-2">
-                  <Zap className="w-4 h-4 text-amber-400 fill-amber-400" />
+                  <Coins className="w-4 h-4 text-amber-400" />
                   <span>Beli Token Build</span>
                 </h4>
                 <p className="text-xs text-slate-400">

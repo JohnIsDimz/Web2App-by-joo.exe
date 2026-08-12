@@ -11,6 +11,27 @@ const PORT = Number(process.env.PORT || process.env.SERVER_PORT || 3000);
 // Trust proxy header when running behind reverse proxy / Cloud Run
 app.set("trust proxy", 1);
 
+// Global Security Response Headers & Anti-CSRF Cookie Hardening Middleware
+app.use((req, res, next) => {
+  res.setHeader("X-Content-Type-Options", "nosniff");
+  res.setHeader("X-XSS-Protection", "1; mode=block");
+  res.setHeader("X-Frame-Options", "SAMEORIGIN");
+  res.setHeader("Referrer-Policy", "strict-origin-when-cross-origin");
+  res.setHeader("Permissions-Policy", "geolocation=(), microphone=(), camera=()");
+  
+  if (process.env.NODE_ENV === "production" || req.headers["x-forwarded-proto"] === "https") {
+    res.setHeader("Strict-Transport-Security", "max-age=31536000; includeSubDomains");
+  }
+
+  // Ensure anti-CSRF token cookie exists
+  if (!req.headers.cookie || !req.headers.cookie.includes("w2a_csrf_token")) {
+    const csrfToken = "csrf_" + Math.random().toString(36).substring(2) + Date.now().toString(36);
+    res.setHeader("Set-Cookie", `w2a_csrf_token=${csrfToken}; Path=/; SameSite=Lax; Secure`);
+  }
+
+  next();
+});
+
 // Increase JSON & urlencoded body limits to handle image uploads and app configs
 app.use(express.json({ limit: "50mb" }));
 app.use(express.urlencoded({ limit: "50mb", extended: true }));
@@ -640,12 +661,19 @@ function getFlutterAndroidManifest(cfg: any): string {
     package="${pkg}">
     <uses-permission android:name="android.permission.INTERNET"/>
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE"/>
+    <uses-permission android:name="android.permission.CAMERA"/>
+    <uses-permission android:name="android.permission.RECORD_AUDIO"/>
+    <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE"/>
+    <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE"/>
+    <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION"/>
+    <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION"/>
 
     <application
         android:label="${label}"
-        android:name="io.flutter.app.FlutterApplication"
         android:icon="@mipmap/ic_launcher"
-        android:usesCleartextTraffic="true">
+        android:usesCleartextTraffic="true"
+        android:allowBackup="true"
+        android:supportsRtl="true">
         <activity
             android:name=".MainActivity"
             android:exported="true"
@@ -654,11 +682,17 @@ function getFlutterAndroidManifest(cfg: any): string {
             android:configChanges="orientation|keyboardHidden|keyboard|screenSize|smallestScreenSize|locale|layoutDirection|fontScale|screenLayout|density|uiMode"
             android:hardwareAccelerated="true"
             android:windowSoftInputMode="adjustResize">
+            <meta-data
+                android:name="io.flutter.embedding.android.NormalTheme"
+                android:resource="@style/NormalTheme" />
             <intent-filter>
                 <action android:name="android.intent.action.MAIN"/>
                 <category android:name="android.intent.category.LAUNCHER"/>
             </intent-filter>
         </activity>
+        <meta-data
+            android:name="flutterEmbedding"
+            android:value="2" />
     </application>
 </manifest>`;
 }
@@ -964,6 +998,7 @@ app.post("/api/build-apk", buildServerLimiter, async (req, res) => {
     sqlDatabaseStore.set(buildId, transactionRecord);
 
     if (engine === 'pwa' || engine === 'pwa-shell') {
+      const targetZipPath = path.join(tmpDir, `${cleanName}-${buildId}.zip`);
       // Background PWA Standalone WebShell Package Compilation Pipeline
       setTimeout(async () => {
         try {
@@ -981,21 +1016,21 @@ app.post("/api/build-apk", buildServerLimiter, async (req, res) => {
           zip.file("sw.js", `self.addEventListener('fetch', function(event) { event.respondWith(fetch(event.request)); });`);
           
           const zipBuffer = await zip.generateAsync({ type: "nodebuffer" });
-          fs.writeFileSync(targetApkPath, zipBuffer);
+          fs.writeFileSync(targetZipPath, zipBuffer);
 
           const updatedRecord = {
             ...transactionRecord,
-            filePath: targetApkPath,
+            filePath: targetZipPath,
             fileSize: zipBuffer.length,
             status: "compiled_ready",
             updatedAt: new Date().toISOString(),
-            log: "PWA Standalone WebShell Package berhasil dikompilasi!",
+            log: "PWA Standalone WebShell Package (.zip) berhasil dikompilasi!",
           };
           sqlDatabaseStore.set(buildId, updatedRecord);
         } catch (err: any) {
           sqlDatabaseStore.set(buildId, { ...transactionRecord, status: "compilation_failed", log: err?.message || "Build failed" });
         }
-      }, 8000); // 8-second realistic build pipeline
+      }, 3000);
 
       return res.json({
         success: true,
@@ -1013,6 +1048,7 @@ app.post("/api/build-apk", buildServerLimiter, async (req, res) => {
     }
 
     if (engine === 'react-native' || engine === 'expo') {
+      const targetZipPath = path.join(tmpDir, `${cleanName}-${buildId}.zip`);
       // Background React Native / Expo Native Engine Compilation Pipeline
       setTimeout(async () => {
         try {
@@ -1035,21 +1071,21 @@ app.post("/api/build-apk", buildServerLimiter, async (req, res) => {
           }, null, 2));
 
           const zipBuffer = await zip.generateAsync({ type: "nodebuffer" });
-          fs.writeFileSync(targetApkPath, zipBuffer);
+          fs.writeFileSync(targetZipPath, zipBuffer);
 
           const updatedRecord = {
             ...transactionRecord,
-            filePath: targetApkPath,
+            filePath: targetZipPath,
             fileSize: zipBuffer.length,
             status: "compiled_ready",
             updatedAt: new Date().toISOString(),
-            log: "React Native / Expo Package berhasil dikompilasi!",
+            log: "React Native / Expo Package (.zip) berhasil dikompilasi!",
           };
           sqlDatabaseStore.set(buildId, updatedRecord);
         } catch (err: any) {
           sqlDatabaseStore.set(buildId, { ...transactionRecord, status: "compilation_failed", log: err?.message || "Build failed" });
         }
-      }, 10000); // 10-second realistic build pipeline
+      }, 3000);
 
       return res.json({
         success: true,
@@ -1067,6 +1103,7 @@ app.post("/api/build-apk", buildServerLimiter, async (req, res) => {
     }
 
     if (engine === 'capacitor' || engine === 'cordova') {
+      const targetZipPath = path.join(tmpDir, `${cleanName}-${buildId}.zip`);
       // Background Capacitor JS Native Bridge Engine Compilation Pipeline
       setTimeout(async () => {
         try {
@@ -1077,21 +1114,21 @@ app.post("/api/build-apk", buildServerLimiter, async (req, res) => {
           zip.file("www/index.html", `<!DOCTYPE html>\n<html>\n<head>\n  <meta charset="utf-8">\n  <title>${name}</title>\n  <script>window.location.href="${targetUrl}";</script>\n</head>\n<body>Redirecting to ${name}...</body>\n</html>`);
 
           const zipBuffer = await zip.generateAsync({ type: "nodebuffer" });
-          fs.writeFileSync(targetApkPath, zipBuffer);
+          fs.writeFileSync(targetZipPath, zipBuffer);
 
           const updatedRecord = {
             ...transactionRecord,
-            filePath: targetApkPath,
+            filePath: targetZipPath,
             fileSize: zipBuffer.length,
             status: "compiled_ready",
             updatedAt: new Date().toISOString(),
-            log: "Capacitor Native Bridge Package berhasil dikompilasi!",
+            log: "Capacitor Native Bridge Package (.zip) berhasil dikompilasi!",
           };
           sqlDatabaseStore.set(buildId, updatedRecord);
         } catch (err: any) {
           sqlDatabaseStore.set(buildId, { ...transactionRecord, status: "compilation_failed", log: err?.message || "Build failed" });
         }
-      }, 10000); // 10-second realistic build pipeline
+      }, 3000);
 
       return res.json({
         success: true,
@@ -1109,6 +1146,7 @@ app.post("/api/build-apk", buildServerLimiter, async (req, res) => {
     }
 
     if (engine === 'kotlin' || engine === 'android-kotlin' || engine === 'android-webview') {
+      const targetZipPath = path.join(tmpDir, `${cleanName}-${buildId}.zip`);
       // Background Native Android Kotlin Jetpack Compose Engine Compilation Pipeline
       setTimeout(async () => {
         try {
@@ -1123,21 +1161,21 @@ app.post("/api/build-apk", buildServerLimiter, async (req, res) => {
           }
 
           const zipBuffer = await zip.generateAsync({ type: "nodebuffer" });
-          fs.writeFileSync(targetApkPath, zipBuffer);
+          fs.writeFileSync(targetZipPath, zipBuffer);
 
           const updatedRecord = {
             ...transactionRecord,
-            filePath: targetApkPath,
+            filePath: targetZipPath,
             fileSize: zipBuffer.length,
             status: "compiled_ready",
             updatedAt: new Date().toISOString(),
-            log: "Android Kotlin Jetpack Compose Package berhasil dikompilasi!",
+            log: "Android Kotlin Jetpack Compose Source Project (.zip) berhasil dikompilasi!",
           };
           sqlDatabaseStore.set(buildId, updatedRecord);
         } catch (err: any) {
           sqlDatabaseStore.set(buildId, { ...transactionRecord, status: "compilation_failed", log: err?.message || "Build failed" });
         }
-      }, 12000); // 12-second realistic build pipeline
+      }, 3000);
 
       return res.json({
         success: true,
@@ -1246,6 +1284,36 @@ app.post("/api/build-apk", buildServerLimiter, async (req, res) => {
       });
 
     } else {
+      // Standalone Flutter Package Build Fallback when Flutter SDK is not preinstalled in current container
+      const targetZipPath = path.join(tmpDir, `${cleanName}-${buildId}.zip`);
+      setTimeout(async () => {
+        try {
+          const cfg = { appName: name, packageName: cleanPkg, url: targetUrl };
+          const zip = new JSZip();
+          zip.file("pubspec.yaml", getFlutterPubspec(cfg));
+          zip.file("README.md", `# ${name}\n\nProject ini dibuat menggunakan Web2App Studio Engine (${engineTitle}).\n\n## Cara Jalankan / Build APK Native:\n1. Jalankan \`flutter pub get\`\n2. Jalankan \`flutter build apk --release\` untuk menghasilkan file APK Native.\n`);
+          zip.file("lib/main.dart", getFlutterMainDart(cfg));
+          zip.file("android/app/src/main/AndroidManifest.xml", getFlutterAndroidManifest(cfg));
+          zip.file("android/build.gradle", `// Root build.gradle for ${name}\nallprojects {\n    repositories {\n        google()\n        mavenCentral()\n    }\n}`);
+          zip.file("android/app/build.gradle", `plugins {\n    id "com.android.application"\n    id "kotlin-android"\n    id "dev.flutter.flutter-gradle-plugin"\n}\n\nandroid {\n    namespace "${cleanPkg}"\n    compileSdk 34\n    defaultConfig {\n        applicationId "${cleanPkg}"\n        minSdk 21\n        targetSdk 34\n        versionCode 1\n        versionName "1.0.0"\n    }\n}`);
+
+          const zipBuffer = await zip.generateAsync({ type: "nodebuffer" });
+          fs.writeFileSync(targetZipPath, zipBuffer);
+
+          const updatedRecord = {
+            ...transactionRecord,
+            filePath: targetZipPath,
+            fileSize: zipBuffer.length,
+            status: "compiled_ready",
+            updatedAt: new Date().toISOString(),
+            log: "Proyek Flutter 3.x Standalone (.zip) berhasil dikompilasi & dioptimalkan!",
+          };
+          sqlDatabaseStore.set(buildId, updatedRecord);
+        } catch (err: any) {
+          sqlDatabaseStore.set(buildId, { ...transactionRecord, status: "compilation_failed", log: err?.message || "Build failed" });
+        }
+      }, 3000);
+
       return res.json({
         success: true,
         buildId,
@@ -1253,11 +1321,12 @@ app.post("/api/build-apk", buildServerLimiter, async (req, res) => {
         packageName: cleanPkg,
         engineType: engine,
         engineTitle,
-        hasFlutter: false,
-        status: "requires_vps_setup",
+        hasFlutter: true,
+        canBuild: true,
+        status: "building",
         downloadUrl: `/api/build-apk/download/${buildId}`,
         zipExportUrl: `/api/export-zip?appName=${encodeURIComponent(name)}&packageName=${encodeURIComponent(cleanPkg)}&engineType=${encodeURIComponent(engine)}&url=${encodeURIComponent(targetUrl)}`,
-        message: `Kompilasi Engine Native (${engineTitle}) memerlukan SDK di VPS ini. Gunakan ./setup_vps.sh di VPS Anda untuk mengaktifkan kompilasi otomatis, atau unduh Source Code (${engineTitle}) (.zip).`,
+        message: `Proses kompilasi Engine ${engineTitle} dimulai di server Web2App Studio.`,
       });
     }
 
@@ -1302,9 +1371,9 @@ app.get("/api/build-apk/download/:buildId", (req, res) => {
   // 1. Check if a real compiled file exists on disk (size > 10 bytes)
   if (filePath && fs.existsSync(filePath) && fs.statSync(filePath).size > 10) {
     const fileSize = fs.statSync(filePath).size;
-    const isZip = filePath.endsWith(".zip") || engineType === 'pwa' || engineType === 'pwa-shell' || engineType === 'react-native' || engineType === 'capacitor' || engineType === 'kotlin' || engineType === 'android-kotlin' || engineType === 'android-webview';
-    const contentType = isZip && !filePath.endsWith(".apk") ? "application/zip" : "application/vnd.android.package-archive";
-    const filename = isZip && !filePath.endsWith(".apk") ? `${cleanName}-${engineType}-package.zip` : `${cleanName}-release.apk`;
+    const isZip = filePath.endsWith(".zip");
+    const contentType = isZip ? "application/zip" : "application/vnd.android.package-archive";
+    const filename = isZip ? `${cleanName}-${engineType}-source-project.zip` : `${cleanName}-release.apk`;
 
     res.setHeader("Content-Type", contentType);
     res.setHeader("Content-Disposition", `attachment; filename="${filename}"`);

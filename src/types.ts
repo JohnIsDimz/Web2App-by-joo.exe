@@ -16,13 +16,13 @@ export interface AppPermissions {
 export interface SupportedPlatforms {
   android: boolean;
   ios: boolean;
-  web: boolean;
-  windows: boolean;
-  macos: boolean;
-  linux: boolean;
+  web?: boolean;
+  windows?: boolean;
+  macos?: boolean;
+  linux?: boolean;
 }
 
-export type EngineType = 'flutter' | 'kotlin' | 'swift' | 'capacitor' | 'react-native' | 'tauri' | 'pwa-shell' | 'android-webview' | 'ios-webview' | 'cordova' | 'kmp' | 'turbo-native' | 'harmony-os' | 'electron-pro';
+export type EngineType = 'flutter' | 'kotlin' | 'swift' | 'capacitor' | 'react-native' | 'android-webview' | 'ios-webview' | 'cordova' | 'kmp' | 'turbo-native';
 
 export interface AppConfig {
   id: string;

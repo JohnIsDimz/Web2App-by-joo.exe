@@ -3,9 +3,9 @@ import {
   Settings,
   Palette,
   ShieldAlert,
+  AlertCircle,
   Smartphone,
   Layers,
-  Sparkles,
   Sliders,
   Check,
   Lock,
@@ -17,7 +17,6 @@ import {
   Mic,
   Cpu,
   Code,
-  Zap,
   MessageSquare,
   Fingerprint,
   ShieldCheck,
@@ -29,6 +28,11 @@ import {
   Laptop,
   CheckCircle2,
   Upload,
+  Tablet,
+  Zap,
+  FileCode,
+  Rocket,
+  Coins,
   Image as ImageIcon,
   X,
 } from 'lucide-react';
@@ -59,9 +63,9 @@ export const Configurator: React.FC<ConfiguratorProps> = ({
   const isStarterOrHigher = isProOrVIP || userPlan === 'Starter';
 
   const handleSelectEngine = (engine: AppConfig['engineType']) => {
-    const isEnterpriseOnly = ['kmp', 'turbo-native', 'harmony-os', 'electron-pro'].includes(engine);
-    const isProOrHigher = ['flutter', 'kotlin', 'swift', 'capacitor', 'react-native', 'tauri'].includes(engine);
-    const isStarterEngine = ['android-webview', 'ios-webview', 'cordova'].includes(engine);
+    const isEnterpriseOnly = ['kmp', 'turbo-native'].includes(engine);
+    const isProOrHigher = ['flutter', 'kotlin', 'swift', 'react-native'].includes(engine);
+    const isStarterEngine = ['android-webview', 'ios-webview'].includes(engine);
 
     if (isEnterpriseOnly && !isVIP) {
       alert(`Engine ${engine.toUpperCase()} adalah fitur eksklusif Paket Enterprise VIP (Rp 60.000 / bulan). Silakan tingkatkan paket di Dompet.`);
@@ -76,7 +80,7 @@ export const Configurator: React.FC<ConfiguratorProps> = ({
     }
 
     if (isStarterEngine && !isStarterOrHigher) {
-      alert(`Engine ${engine.toUpperCase()} memerlukan Paket Starter (Rp 15.000 / bulan) atau lebih tinggi. Engine PWA Standalone dapat digunakan secara Gratis!`);
+      alert(`Engine ${engine.toUpperCase()} memerlukan Paket Starter (Rp 15.000 / bulan) atau lebih tinggi.`);
       onOpenWalletModal();
       return;
     }
@@ -93,11 +97,12 @@ export const Configurator: React.FC<ConfiguratorProps> = ({
     });
   };
 
-  const handlePlatformToggle = (key: keyof AppConfig['supportedPlatforms']) => {
+  const handleSelectPlatform = (selectedKey: 'android' | 'ios') => {
     onChangeConfig({
       supportedPlatforms: {
         ...config.supportedPlatforms,
-        [key]: !config.supportedPlatforms[key],
+        android: selectedKey === 'android',
+        ios: selectedKey === 'ios',
       },
     });
   };
@@ -174,7 +179,7 @@ export const Configurator: React.FC<ConfiguratorProps> = ({
               : 'bg-slate-800/80 text-slate-400 hover:text-white'
           }`}
         >
-          <Sparkles className="w-4 h-4" />
+          <Sliders className="w-4 h-4" />
           <span>Fitur Lanjutan</span>
         </button>
 
@@ -397,7 +402,7 @@ export const Configurator: React.FC<ConfiguratorProps> = ({
               Pilih mesin pendorong utama yang akan mengeksekusi aplikasi web Anda secara native di perangkat mobile & desktop.
             </p>
 
-            {!isVIP && ['kmp', 'turbo-native', 'harmony-os', 'electron-pro'].includes(config.engineType) && (
+            {!isVIP && ['kmp', 'turbo-native'].includes(config.engineType) && (
               <div className="p-3.5 bg-purple-500/10 border border-purple-500/30 rounded-xl text-purple-200 text-xs flex items-center justify-between gap-3 mb-4">
                 <div className="flex items-center gap-2">
                   <Lock className="w-4 h-4 text-purple-400 shrink-0" />
@@ -413,7 +418,7 @@ export const Configurator: React.FC<ConfiguratorProps> = ({
               </div>
             )}
 
-            {!isProOrVIP && ['flutter', 'kotlin', 'swift', 'capacitor', 'react-native', 'tauri'].includes(config.engineType) && (
+            {!isProOrVIP && ['flutter', 'kotlin', 'swift', 'capacitor', 'react-native'].includes(config.engineType) && (
               <div className="p-3.5 bg-amber-500/10 border border-amber-500/30 rounded-xl text-amber-200 text-xs flex items-center justify-between gap-3 mb-4">
                 <div className="flex items-center gap-2">
                   <Lock className="w-4 h-4 text-amber-400 shrink-0" />
@@ -429,7 +434,7 @@ export const Configurator: React.FC<ConfiguratorProps> = ({
               </div>
             )}
 
-            {!isStarterOrHigher && ['android-webview', 'ios-webview', 'cordova'].includes(config.engineType) && (
+            {!isStarterOrHigher && ['android-webview', 'ios-webview'].includes(config.engineType) && (
               <div className="p-3.5 bg-sky-500/10 border border-sky-500/30 rounded-xl text-sky-200 text-xs flex items-center justify-between gap-3 mb-4">
                 <div className="flex items-center gap-2">
                   <Lock className="w-4 h-4 text-sky-400 shrink-0" />
@@ -447,41 +452,41 @@ export const Configurator: React.FC<ConfiguratorProps> = ({
 
             <div className="space-y-6">
 
-              {/* TIER 0: FREE ENGINES (Rp 0) */}
+              {/* TIER 0: FREE TIER (Rp 0 / Bulan) */}
               <div className="space-y-2">
-                <div className="flex items-center justify-between px-1">
-                  <span className="text-xs font-bold text-emerald-400 uppercase tracking-wider flex items-center gap-1.5">
-                    <Globe className="w-4 h-4 text-emerald-400" />
-                    <span>1. Gratis / Free Engine (Rp 0)</span>
+                <div className="flex items-center justify-between px-1 gap-2">
+                  <span className="text-xs font-bold text-emerald-400 uppercase tracking-wider flex items-center gap-1.5 min-w-0">
+                    <Smartphone className="w-4 h-4 text-emerald-400 shrink-0" />
+                    <span className="truncate">0. Paket Gratis (Rp 0 / Bulan)</span>
                   </span>
-                  <span className="text-[10px] bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 px-2.5 py-0.5 rounded-full font-bold">
-                    Tanpa Langganan
+                  <span className="text-[10px] bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 px-2.5 py-0.5 rounded-full font-bold whitespace-nowrap shrink-0">
+                    Free Tier
                   </span>
                 </div>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                <div className="grid grid-cols-1 gap-3">
                   <button
                     type="button"
-                    onClick={() => handleSelectEngine('pwa-shell')}
+                    onClick={() => handleSelectEngine('cordova')}
                     className={`p-4 rounded-xl border text-left transition-all ${
-                      config.engineType === 'pwa-shell'
+                      config.engineType === 'cordova'
                         ? 'bg-emerald-500/20 border-emerald-500 text-white ring-1 ring-emerald-500'
                         : 'bg-slate-950 border-slate-800 text-slate-400 hover:text-white'
                     }`}
                   >
                     <div className="flex items-center justify-between mb-2">
                       <span className="font-bold text-sm text-emerald-400 flex items-center gap-1.5">
-                        <Globe className="w-4 h-4 text-emerald-400" />
-                        <span>PWA Standalone WebShell</span>
+                        <Layers className="w-4 h-4 text-emerald-400" />
+                        <span>Apache Cordova Hybrid</span>
                       </span>
-                      <span className="text-[10px] bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 px-2 py-0.5 rounded-full font-bold">Gratis / Free</span>
+                      <span className="text-[10px] bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 px-2 py-0.5 rounded-full font-bold">Free Rp 0</span>
                     </div>
                     <p className="text-xs text-slate-300 mb-2">
-                      Manifest V3 Progressive Web App dengan Workbox Service Worker offline caching. Tanpa butuh SDK Android/iOS.
+                      Engine hybrid standar 100% Free! Cocok untuk pengujian awal. Memiliki keterbatasan kecepatan render WebView standar &amp; tanpa akselerasi GPU hardware/JS Bridge lanjutan.
                     </p>
-                    <div className="text-[11px] text-slate-400 flex items-center gap-2">
-                      <span className="flex items-center gap-1"><Check className="w-3 h-3 text-emerald-400" /> Installable App</span>
-                      <span className="flex items-center gap-1"><Check className="w-3 h-3 text-emerald-400" /> Offline Cache</span>
-                      <span className="flex items-center gap-1"><Check className="w-3 h-3 text-emerald-400" /> Zero-SDK Needed</span>
+                    <div className="text-[11px] text-slate-400 flex flex-wrap items-center gap-2">
+                      <span className="flex items-center gap-1 text-emerald-300"><Check className="w-3 h-3 text-emerald-400" /> Android &amp; iOS Standar</span>
+                      <span className="flex items-center gap-1 text-amber-300/80"><AlertCircle className="w-3 h-3 text-amber-400 shrink-0" /> Render WebView Klasik</span>
+                      <span className="flex items-center gap-1 text-amber-300/80"><AlertCircle className="w-3 h-3 text-amber-400 shrink-0" /> Tanpa Akselerasi GPU Native</span>
                     </div>
                   </button>
                 </div>
@@ -489,12 +494,12 @@ export const Configurator: React.FC<ConfiguratorProps> = ({
 
               {/* TIER 1: STARTER ENGINES (Rp 15.000 / Bulan) */}
               <div className="space-y-2 pt-2 border-t border-slate-800/80">
-                <div className="flex items-center justify-between px-1">
-                  <span className="text-xs font-bold text-sky-400 uppercase tracking-wider flex items-center gap-1.5">
-                    <Smartphone className="w-4 h-4 text-sky-400" />
-                    <span>2. Paket Starter (Rp 15.000 / Bulan)</span>
+                <div className="flex items-center justify-between px-1 gap-2">
+                  <span className="text-xs font-bold text-sky-400 uppercase tracking-wider flex items-center gap-1.5 min-w-0">
+                    <Smartphone className="w-4 h-4 text-sky-400 shrink-0" />
+                    <span className="truncate">1. Paket Starter (Rp 15.000 / Bulan)</span>
                   </span>
-                  <span className="text-[10px] bg-sky-500/20 text-sky-300 border border-sky-500/30 px-2.5 py-0.5 rounded-full font-bold">
+                  <span className="text-[10px] bg-sky-500/20 text-sky-300 border border-sky-500/30 px-2.5 py-0.5 rounded-full font-bold whitespace-nowrap shrink-0">
                     Starter Tier
                   </span>
                 </div>
@@ -513,15 +518,15 @@ export const Configurator: React.FC<ConfiguratorProps> = ({
                         <Smartphone className="w-4 h-4 text-sky-400" />
                         <span>Basic Android WebView Shell</span>
                       </span>
-                      <span className="text-[10px] bg-sky-500/20 text-sky-300 border border-sky-500/30 px-2 py-0.5 rounded-full font-bold">Starter 15k</span>
+                      <span className="text-[10px] bg-sky-500/20 text-sky-300 border border-sky-500/30 px-2 py-0.5 rounded-full font-bold whitespace-nowrap shrink-0">Starter 15k</span>
                     </div>
                     <p className="text-xs text-slate-300 mb-2">
-                      Wadah aplikasi native Android dengan WebView AndroidX, splash screen, & integrasi URL utama.
+                      Wadah aplikasi native Android dengan WebView AndroidX &amp; splash screen. Dioptimalkan khusus untuk web sederhana single-platform.
                     </p>
-                    <div className="text-[11px] text-slate-400 flex items-center gap-2">
-                      <span className="flex items-center gap-1"><Check className="w-3 h-3 text-sky-400" /> Native APK Wrapper</span>
-                      <span className="flex items-center gap-1"><Check className="w-3 h-3 text-sky-400" /> Splash Screen</span>
-                      <span className="flex items-center gap-1"><Check className="w-3 h-3 text-sky-400" /> Ringan & Cepat</span>
+                    <div className="text-[11px] text-slate-400 flex flex-wrap items-center gap-2">
+                      <span className="flex items-center gap-1 text-sky-300"><Check className="w-3 h-3 text-sky-400" /> Native APK Wrapper</span>
+                      <span className="flex items-center gap-1 text-sky-300"><Check className="w-3 h-3 text-sky-400" /> Ringan &amp; Cepat</span>
+                      <span className="flex items-center gap-1 text-amber-300/80"><AlertCircle className="w-3 h-3 text-amber-400 shrink-0" /> Khusus OS Android</span>
                     </div>
                   </button>
 
@@ -536,44 +541,18 @@ export const Configurator: React.FC<ConfiguratorProps> = ({
                   >
                     <div className="flex items-center justify-between mb-2">
                       <span className="font-bold text-sm text-sky-400 flex items-center gap-1.5">
-                        <Smartphone className="w-4 h-4 text-sky-400" />
+                        <Tablet className="w-4 h-4 text-sky-400" />
                         <span>Basic iOS WKWebView Wrapper</span>
                       </span>
-                      <span className="text-[10px] bg-sky-500/20 text-sky-300 border border-sky-500/30 px-2 py-0.5 rounded-full font-bold">Starter 15k</span>
+                      <span className="text-[10px] bg-sky-500/20 text-sky-300 border border-sky-500/30 px-2 py-0.5 rounded-full font-bold whitespace-nowrap shrink-0">Starter 15k</span>
                     </div>
                     <p className="text-xs text-slate-300 mb-2">
-                      Kontainer Swift WKWebView ringan khusus iOS dengan penanganan navigasi & penjelajahan aman.
+                      Kontainer Swift WKWebView ringan khusus iOS. Sangat efisien untuk penjelajahan web standar di perangkat Apple.
                     </p>
-                    <div className="text-[11px] text-slate-400 flex items-center gap-2">
-                      <span className="flex items-center gap-1"><Check className="w-3 h-3 text-sky-400" /> iOS Swift Shell</span>
-                      <span className="flex items-center gap-1"><Check className="w-3 h-3 text-sky-400" /> WKWebView 60FPS</span>
-                      <span className="flex items-center gap-1"><Check className="w-3 h-3 text-sky-400" /> Minimal Memory</span>
-                    </div>
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={() => handleSelectEngine('cordova')}
-                    className={`p-4 rounded-xl border text-left transition-all ${
-                      config.engineType === 'cordova'
-                        ? 'bg-sky-500/20 border-sky-500 text-white ring-1 ring-sky-500'
-                        : 'bg-slate-950 border-slate-800 text-slate-400 hover:text-white'
-                    }`}
-                  >
-                    <div className="flex items-center justify-between mb-2">
-                      <span className="font-bold text-sm text-sky-400 flex items-center gap-1.5">
-                        <Layers className="w-4 h-4 text-sky-400" />
-                        <span>Apache Cordova Hybrid</span>
-                      </span>
-                      <span className="text-[10px] bg-sky-500/20 text-sky-300 border border-sky-500/30 px-2 py-0.5 rounded-full font-bold">Starter 15k</span>
-                    </div>
-                    <p className="text-xs text-slate-300 mb-2">
-                      Kerangka kerja hybrid klasik Apache Cordova untuk bundel web multi-platform (Android & iOS).
-                    </p>
-                    <div className="text-[11px] text-slate-400 flex items-center gap-2">
-                      <span className="flex items-center gap-1"><Check className="w-3 h-3 text-sky-400" /> Cross-Platform</span>
-                      <span className="flex items-center gap-1"><Check className="w-3 h-3 text-sky-400" /> Cordova Plugins</span>
-                      <span className="flex items-center gap-1"><Check className="w-3 h-3 text-sky-400" /> Stable Classic</span>
+                    <div className="text-[11px] text-slate-400 flex flex-wrap items-center gap-2">
+                      <span className="flex items-center gap-1 text-sky-300"><Check className="w-3 h-3 text-sky-400" /> iOS Swift Shell</span>
+                      <span className="flex items-center gap-1 text-sky-300"><Check className="w-3 h-3 text-sky-400" /> WKWebView 60FPS</span>
+                      <span className="flex items-center gap-1 text-amber-300/80"><AlertCircle className="w-3 h-3 text-amber-400 shrink-0" /> Khusus OS iOS</span>
                     </div>
                   </button>
                 </div>
@@ -581,12 +560,12 @@ export const Configurator: React.FC<ConfiguratorProps> = ({
 
               {/* TIER 2: PRO BUILDER ENGINES (Rp 30.000 / Bulan) */}
               <div className="space-y-2 pt-2 border-t border-slate-800/80">
-                <div className="flex items-center justify-between px-1">
-                  <span className="text-xs font-bold text-amber-400 uppercase tracking-wider flex items-center gap-1.5">
-                    <Zap className="w-4 h-4 text-amber-400" />
-                    <span>3. Paket Pro Builder (Rp 30.000 / Bulan)</span>
+                <div className="flex items-center justify-between px-1 gap-2">
+                  <span className="text-xs font-bold text-amber-400 uppercase tracking-wider flex items-center gap-1.5 min-w-0">
+                    <Smartphone className="w-4 h-4 text-amber-400 shrink-0" />
+                    <span className="truncate">2. Paket Pro Builder (Rp 30.000 / Bulan)</span>
                   </span>
-                  <span className="text-[10px] bg-amber-500/20 text-amber-300 border border-amber-500/30 px-2.5 py-0.5 rounded-full font-bold">
+                  <span className="text-[10px] bg-amber-500/20 text-amber-300 border border-amber-500/30 px-2.5 py-0.5 rounded-full font-bold whitespace-nowrap shrink-0">
                     Paling Populer
                   </span>
                 </div>
@@ -605,15 +584,15 @@ export const Configurator: React.FC<ConfiguratorProps> = ({
                         <Zap className="w-4 h-4 text-amber-400" />
                         <span>Flutter 3.x Engine</span>
                       </span>
-                      <span className="text-[10px] bg-amber-500/20 text-amber-300 border border-amber-500/30 px-2 py-0.5 rounded-full font-bold">Pro 30k</span>
+                      <span className="text-[10px] bg-amber-500/20 text-amber-300 border border-amber-500/30 px-2 py-0.5 rounded-full font-bold whitespace-nowrap shrink-0">Pro 30k</span>
                     </div>
                     <p className="text-xs text-slate-300 mb-2">
-                      Menggunakan `webview_flutter` versi terbaru, hardware acceleration GPU, smart cache, & multi-platform compilation.
+                      Engine `webview_flutter` modern dengan hardware acceleration GPU, smart cache, &amp; kompilasi Android/iOS langsung.
                     </p>
-                    <div className="text-[11px] text-slate-400 flex items-center gap-2">
-                      <span className="flex items-center gap-1"><Check className="w-3 h-3 text-amber-400" /> Pull-to-refresh</span>
-                      <span className="flex items-center gap-1"><Check className="w-3 h-3 text-amber-400" /> Hardware Back Button</span>
-                      <span className="flex items-center gap-1"><Check className="w-3 h-3 text-amber-400" /> JS Bridge</span>
+                    <div className="text-[11px] text-slate-400 flex flex-wrap items-center gap-2">
+                      <span className="flex items-center gap-1 text-amber-300"><Check className="w-3 h-3 text-amber-400" /> Pull-to-Refresh</span>
+                      <span className="flex items-center gap-1 text-amber-300"><Check className="w-3 h-3 text-amber-400" /> JS Bridge</span>
+                      <span className="flex items-center gap-1 text-amber-300/80"><AlertCircle className="w-3 h-3 text-amber-400 shrink-0" /> Standar Cross-Platform</span>
                     </div>
                   </button>
 
@@ -628,18 +607,18 @@ export const Configurator: React.FC<ConfiguratorProps> = ({
                   >
                     <div className="flex items-center justify-between mb-2">
                       <span className="font-bold text-sm text-amber-400 flex items-center gap-1.5">
-                        <Smartphone className="w-4 h-4 text-amber-400" />
+                        <Code className="w-4 h-4 text-amber-400" />
                         <span>Android Jetpack Compose</span>
                       </span>
-                      <span className="text-[10px] bg-amber-500/20 text-amber-300 border border-amber-500/30 px-2 py-0.5 rounded-full font-bold">Pro 30k</span>
+                      <span className="text-[10px] bg-amber-500/20 text-amber-300 border border-amber-500/30 px-2 py-0.5 rounded-full font-bold whitespace-nowrap shrink-0">Pro 30k</span>
                     </div>
                     <p className="text-xs text-slate-300 mb-2">
-                      Kotlin + AndroidX WebKit + Material3 Design. Ukuran APK sangat kecil dan dioptimalkan khusus untuk ekosistem Android.
+                      Kotlin Native + Material3 UI. Performa kencang untuk Android, belum mendukung kompilasi iOS.
                     </p>
-                    <div className="text-[11px] text-slate-400 flex items-center gap-2">
-                      <span className="flex items-center gap-1"><Check className="w-3 h-3 text-amber-400" /> AndroidX WebKit</span>
-                      <span className="flex items-center gap-1"><Check className="w-3 h-3 text-amber-400" /> Splash API</span>
-                      <span className="flex items-center gap-1"><Check className="w-3 h-3 text-amber-400" /> Native Intent</span>
+                    <div className="text-[11px] text-slate-400 flex flex-wrap items-center gap-2">
+                      <span className="flex items-center gap-1 text-amber-300"><Check className="w-3 h-3 text-amber-400" /> Jetpack Compose</span>
+                      <span className="flex items-center gap-1 text-amber-300"><Check className="w-3 h-3 text-amber-400" /> Native Intent</span>
+                      <span className="flex items-center gap-1 text-amber-300/80"><AlertCircle className="w-3 h-3 text-amber-400 shrink-0" /> Khusus Android</span>
                     </div>
                   </button>
 
@@ -654,18 +633,18 @@ export const Configurator: React.FC<ConfiguratorProps> = ({
                   >
                     <div className="flex items-center justify-between mb-2">
                       <span className="font-bold text-sm text-amber-400 flex items-center gap-1.5">
-                        <Smartphone className="w-4 h-4 text-amber-400" />
+                        <Terminal className="w-4 h-4 text-amber-400" />
                         <span>iOS Swift / SwiftUI</span>
                       </span>
-                      <span className="text-[10px] bg-amber-500/20 text-amber-300 border border-amber-500/30 px-2 py-0.5 rounded-full font-bold">Pro 30k</span>
+                      <span className="text-[10px] bg-amber-500/20 text-amber-300 border border-amber-500/30 px-2 py-0.5 rounded-full font-bold whitespace-nowrap shrink-0">Pro 30k</span>
                     </div>
                     <p className="text-xs text-slate-300 mb-2">
-                      SwiftUI + WKWebView + Apple Push Notification Service (APNS). Performa 60FPS murni untuk iPhone & iPad.
+                      SwiftUI + WKWebView murni 60FPS untuk iOS Apple device. Dioptimalkan khusus iOS, belum mendukung Android.
                     </p>
-                    <div className="text-[11px] text-slate-400 flex items-center gap-2">
-                      <span className="flex items-center gap-1"><Check className="w-3 h-3 text-amber-400" /> WKWebView</span>
-                      <span className="flex items-center gap-1"><Check className="w-3 h-3 text-amber-400" /> iOS Swipe Back</span>
-                      <span className="flex items-center gap-1"><Check className="w-3 h-3 text-amber-400" /> Safari Engine</span>
+                    <div className="text-[11px] text-slate-400 flex flex-wrap items-center gap-2">
+                      <span className="flex items-center gap-1 text-amber-300"><Check className="w-3 h-3 text-amber-400" /> SwiftUI 60FPS</span>
+                      <span className="flex items-center gap-1 text-amber-300"><Check className="w-3 h-3 text-amber-400" /> iOS Swipe Back</span>
+                      <span className="flex items-center gap-1 text-amber-300/80"><AlertCircle className="w-3 h-3 text-amber-400 shrink-0" /> Khusus iOS</span>
                     </div>
                   </button>
 
@@ -681,17 +660,17 @@ export const Configurator: React.FC<ConfiguratorProps> = ({
                     <div className="flex items-center justify-between mb-2">
                       <span className="font-bold text-sm text-amber-400 flex items-center gap-1.5">
                         <Layers className="w-4 h-4 text-amber-400" />
-                        <span>Capacitor / PWA Hybrid</span>
+                        <span>Capacitor Mobile Native</span>
                       </span>
-                      <span className="text-[10px] bg-amber-500/20 text-amber-300 border border-amber-500/30 px-2 py-0.5 rounded-full font-bold">Pro 30k</span>
+                      <span className="text-[10px] bg-amber-500/20 text-amber-300 border border-amber-500/30 px-2 py-0.5 rounded-full font-bold whitespace-nowrap shrink-0">Pro 30k</span>
                     </div>
                     <p className="text-xs text-slate-300 mb-2">
-                      Capacitor 6.x runtime dengan Service Worker caching dan akses penuh ke Native Plugins web JS.
+                      Capacitor 6.x runtime dengan Service Worker caching &amp; akses plugin JS standar.
                     </p>
-                    <div className="text-[11px] text-slate-400 flex items-center gap-2">
-                      <span className="flex items-center gap-1"><Check className="w-3 h-3 text-amber-400" /> Offline SW</span>
-                      <span className="flex items-center gap-1"><Check className="w-3 h-3 text-amber-400" /> Web Plugins</span>
-                      <span className="flex items-center gap-1"><Check className="w-3 h-3 text-amber-400" /> Cross-Platform</span>
+                    <div className="text-[11px] text-slate-400 flex flex-wrap items-center gap-2">
+                      <span className="flex items-center gap-1 text-amber-300"><Check className="w-3 h-3 text-amber-400" /> Offline SW Cache</span>
+                      <span className="flex items-center gap-1 text-amber-300"><Check className="w-3 h-3 text-amber-400" /> Cross-Platform JS</span>
+                      <span className="flex items-center gap-1 text-amber-300/80"><AlertCircle className="w-3 h-3 text-amber-400 shrink-0" /> JS Bridge Standar</span>
                     </div>
                   </button>
 
@@ -709,41 +688,15 @@ export const Configurator: React.FC<ConfiguratorProps> = ({
                         <Code className="w-4 h-4 text-amber-400" />
                         <span>React Native / Expo Engine</span>
                       </span>
-                      <span className="text-[10px] bg-amber-500/20 text-amber-300 border border-amber-500/30 px-2 py-0.5 rounded-full font-bold">Pro 30k</span>
+                      <span className="text-[10px] bg-amber-500/20 text-amber-300 border border-amber-500/30 px-2 py-0.5 rounded-full font-bold whitespace-nowrap shrink-0">Pro 30k</span>
                     </div>
                     <p className="text-xs text-slate-300 mb-2">
-                      React Native 0.74 + Expo Webview shell. Dioptimalkan untuk kompatibilitas JavaScript modern dan Fast Refresh.
+                      React Native 0.74 + Expo Webview shell. Fleksibel untuk ekosistem JavaScript &amp; React modern.
                     </p>
-                    <div className="text-[11px] text-slate-400 flex items-center gap-2">
-                      <span className="flex items-center gap-1"><Check className="w-3 h-3 text-amber-400" /> Expo Webview</span>
-                      <span className="flex items-center gap-1"><Check className="w-3 h-3 text-amber-400" /> React Hooks Bridge</span>
-                      <span className="flex items-center gap-1"><Check className="w-3 h-3 text-amber-400" /> Universal JS</span>
-                    </div>
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={() => handleSelectEngine('tauri')}
-                    className={`p-4 rounded-xl border text-left transition-all ${
-                      config.engineType === 'tauri'
-                        ? 'bg-amber-500/20 border-amber-500 text-white ring-1 ring-amber-500'
-                        : 'bg-slate-950 border-slate-800 text-slate-400 hover:text-white'
-                    }`}
-                  >
-                    <div className="flex items-center justify-between mb-2">
-                      <span className="font-bold text-sm text-amber-400 flex items-center gap-1.5">
-                        <Cpu className="w-4 h-4 text-amber-400" />
-                        <span>Tauri 2.0 Rust Engine</span>
-                      </span>
-                      <span className="text-[10px] bg-amber-500/20 text-amber-300 border border-amber-500/30 px-2 py-0.5 rounded-full font-bold">Pro 30k</span>
-                    </div>
-                    <p className="text-xs text-slate-300 mb-2">
-                      Engine Tauri versi 2 (Rust + WebView2/WKWebView). Ukuran executable sangat kecil (&lt; 5MB) dan keamanan tingkat tinggi.
-                    </p>
-                    <div className="text-[11px] text-slate-400 flex items-center gap-2">
-                      <span className="flex items-center gap-1"><Check className="w-3 h-3 text-amber-400" /> Hardened Memory</span>
-                      <span className="flex items-center gap-1"><Check className="w-3 h-3 text-amber-400" /> Minimal Memory RAM</span>
-                      <span className="flex items-center gap-1"><Check className="w-3 h-3 text-amber-400" /> Cross-Desktop/Mobile</span>
+                    <div className="text-[11px] text-slate-400 flex flex-wrap items-center gap-2">
+                      <span className="flex items-center gap-1 text-amber-300"><Check className="w-3 h-3 text-amber-400" /> Expo Webview</span>
+                      <span className="flex items-center gap-1 text-amber-300"><Check className="w-3 h-3 text-amber-400" /> Universal JS</span>
+                      <span className="flex items-center gap-1 text-amber-300/80"><AlertCircle className="w-3 h-3 text-amber-400 shrink-0" /> Ukuran Bundel Moderate</span>
                     </div>
                   </button>
                 </div>
@@ -751,12 +704,12 @@ export const Configurator: React.FC<ConfiguratorProps> = ({
 
               {/* TIER 3: ENTERPRISE VIP ENGINES (Rp 60.000 / Bulan) */}
               <div className="space-y-2 pt-2 border-t border-slate-800/80">
-                <div className="flex items-center justify-between px-1">
-                  <span className="text-xs font-bold text-purple-400 uppercase tracking-wider flex items-center gap-1.5">
-                    <Sparkles className="w-4 h-4 text-purple-400" />
-                    <span>4. Paket Enterprise VIP (Rp 60.000 / Bulan)</span>
+                <div className="flex items-center justify-between px-1 gap-2">
+                  <span className="text-xs font-bold text-purple-400 uppercase tracking-wider flex items-center gap-1.5 min-w-0">
+                    <Smartphone className="w-4 h-4 text-purple-400 shrink-0" />
+                    <span className="truncate">3. Paket Enterprise VIP (Rp 60.000 / Bulan)</span>
                   </span>
-                  <span className="text-[10px] bg-purple-500/20 text-purple-300 border border-purple-500/30 px-2.5 py-0.5 rounded-full font-bold">
+                  <span className="text-[10px] bg-purple-500/20 text-purple-300 border border-purple-500/30 px-2.5 py-0.5 rounded-full font-bold whitespace-nowrap shrink-0">
                     Full Unlocked VIP
                   </span>
                 </div>
@@ -772,18 +725,18 @@ export const Configurator: React.FC<ConfiguratorProps> = ({
                   >
                     <div className="flex items-center justify-between mb-2">
                       <span className="font-bold text-sm text-purple-400 flex items-center gap-1.5">
-                        <Zap className="w-4 h-4 text-purple-400" />
-                        <span>Kotlin Multiplatform (KMP)</span>
+                        <Cpu className="w-4 h-4 text-purple-400" />
+                        <span>Kotlin Multiplatform (KMP) Full Stack</span>
                       </span>
-                      <span className="text-[10px] bg-purple-500/20 text-purple-300 border border-purple-500/30 px-2 py-0.5 rounded-full font-bold">Enterprise 60k</span>
+                      <span className="text-[10px] bg-purple-500/20 text-purple-300 border border-purple-500/30 px-2 py-0.5 rounded-full font-bold whitespace-nowrap shrink-0">Enterprise 60k</span>
                     </div>
                     <p className="text-xs text-slate-300 mb-2">
-                      KMP shared business logic + Compose Multiplatform UI. Performa kompilasi murni LLVM/JVM untuk Android & iOS.
+                      KMP shared business logic + Compose Multiplatform UI. Performa kompilasi LLVM/JVM 100% Native Full-Stack tanpa batasan.
                     </p>
-                    <div className="text-[11px] text-slate-400 flex items-center gap-2">
-                      <span className="flex items-center gap-1"><Check className="w-3 h-3 text-purple-400" /> Shared Logic</span>
-                      <span className="flex items-center gap-1"><Check className="w-3 h-3 text-purple-400" /> Compose UI</span>
-                      <span className="flex items-center gap-1"><Check className="w-3 h-3 text-purple-400" /> Native Performance</span>
+                    <div className="text-[11px] text-slate-400 flex flex-wrap items-center gap-2">
+                      <span className="flex items-center gap-1 text-purple-300"><Check className="w-3 h-3 text-purple-400" /> Full-Stack KMP Shared</span>
+                      <span className="flex items-center gap-1 text-purple-300"><Check className="w-3 h-3 text-purple-400" /> Compose Multiplatform</span>
+                      <span className="flex items-center gap-1 text-purple-300"><Check className="w-3 h-3 text-purple-400" /> 100% Native Speed</span>
                     </div>
                   </button>
 
@@ -798,70 +751,18 @@ export const Configurator: React.FC<ConfiguratorProps> = ({
                   >
                     <div className="flex items-center justify-between mb-2">
                       <span className="font-bold text-sm text-purple-400 flex items-center gap-1.5">
-                        <Smartphone className="w-4 h-4 text-purple-400" />
-                        <span>Hotwire Turbo Native Engine</span>
+                        <Rocket className="w-4 h-4 text-purple-400" />
+                        <span>Hotwire Turbo Native Full-Stack</span>
                       </span>
-                      <span className="text-[10px] bg-purple-500/20 text-purple-300 border border-purple-500/30 px-2 py-0.5 rounded-full font-bold">Enterprise 60k</span>
+                      <span className="text-[10px] bg-purple-500/20 text-purple-300 border border-purple-500/30 px-2 py-0.5 rounded-full font-bold whitespace-nowrap shrink-0">Enterprise 60k</span>
                     </div>
                     <p className="text-xs text-slate-300 mb-2">
-                      Engine navigasi Hotwire/Turbo untuk menyatukan halaman web real-time server dengan transisi layar native super mulus.
+                      Engine navigasi Hotwire Turbo untuk menyatukan backend web real-time server dengan transisi layar native tanpa reload.
                     </p>
-                    <div className="text-[11px] text-slate-400 flex items-center gap-2">
-                      <span className="flex items-center gap-1"><Check className="w-3 h-3 text-purple-400" /> Turbo Navigation</span>
-                      <span className="flex items-center gap-1"><Check className="w-3 h-3 text-purple-400" /> Zero Reload Lag</span>
-                      <span className="flex items-center gap-1"><Check className="w-3 h-3 text-purple-400" /> Server-Driven</span>
-                    </div>
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={() => handleSelectEngine('harmony-os')}
-                    className={`p-4 rounded-xl border text-left transition-all ${
-                      config.engineType === 'harmony-os'
-                        ? 'bg-purple-500/20 border-purple-500 text-white ring-1 ring-purple-500'
-                        : 'bg-slate-950 border-slate-800 text-slate-400 hover:text-white'
-                    }`}
-                  >
-                    <div className="flex items-center justify-between mb-2">
-                      <span className="font-bold text-sm text-purple-400 flex items-center gap-1.5">
-                        <Cpu className="w-4 h-4 text-purple-400" />
-                        <span>OpenHarmony (ArkUI Engine)</span>
-                      </span>
-                      <span className="text-[10px] bg-purple-500/20 text-purple-300 border border-purple-500/30 px-2 py-0.5 rounded-full font-bold">Enterprise 60k</span>
-                    </div>
-                    <p className="text-xs text-slate-300 mb-2">
-                      Mesin ArkUI & WebKit Huawei HarmonyOS NEXT untuk ekosistem perangkat pintar global terbaru.
-                    </p>
-                    <div className="text-[11px] text-slate-400 flex items-center gap-2">
-                      <span className="flex items-center gap-1"><Check className="w-3 h-3 text-purple-400" /> ArkUI Runtime</span>
-                      <span className="flex items-center gap-1"><Check className="w-3 h-3 text-purple-400" /> Harmony WebKit</span>
-                      <span className="flex items-center gap-1"><Check className="w-3 h-3 text-purple-400" /> HarmonyOS NEXT</span>
-                    </div>
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={() => handleSelectEngine('electron-pro')}
-                    className={`p-4 rounded-xl border text-left transition-all ${
-                      config.engineType === 'electron-pro'
-                        ? 'bg-purple-500/20 border-purple-500 text-white ring-1 ring-purple-500'
-                        : 'bg-slate-950 border-slate-800 text-slate-400 hover:text-white'
-                    }`}
-                  >
-                    <div className="flex items-center justify-between mb-2">
-                      <span className="font-bold text-sm text-purple-400 flex items-center gap-1.5">
-                        <Code className="w-4 h-4 text-purple-400" />
-                        <span>Electron Pro Desktop Engine</span>
-                      </span>
-                      <span className="text-[10px] bg-purple-500/20 text-purple-300 border border-purple-500/30 px-2 py-0.5 rounded-full font-bold">Enterprise 60k</span>
-                    </div>
-                    <p className="text-xs text-slate-300 mb-2">
-                      Chromium 126 + Node.js 20 wrapper produksi dengan fitur tray bar, installer `.exe`, `.dmg`, `.AppImage`, & auto-updater.
-                    </p>
-                    <div className="text-[11px] text-slate-400 flex items-center gap-2">
-                      <span className="flex items-center gap-1"><Check className="w-3 h-3 text-purple-400" /> Full Desktop Shell</span>
-                      <span className="flex items-center gap-1"><Check className="w-3 h-3 text-purple-400" /> System Tray</span>
-                      <span className="flex items-center gap-1"><Check className="w-3 h-3 text-purple-400" /> Auto-Updater</span>
+                    <div className="text-[11px] text-slate-400 flex flex-wrap items-center gap-2">
+                      <span className="flex items-center gap-1 text-purple-300"><Check className="w-3 h-3 text-purple-400" /> Full-Stack Server Bridge</span>
+                      <span className="flex items-center gap-1 text-purple-300"><Check className="w-3 h-3 text-purple-400" /> Zero Reload Lag</span>
+                      <span className="flex items-center gap-1 text-purple-300"><Check className="w-3 h-3 text-purple-400" /> VIP Unlocked</span>
                     </div>
                   </button>
                 </div>
@@ -1312,7 +1213,7 @@ export const Configurator: React.FC<ConfiguratorProps> = ({
 
             <div className="p-4 bg-slate-950 border border-slate-800 rounded-xl space-y-2">
               <label className="block text-xs font-bold text-white mb-1 flex items-center gap-1.5">
-                <Sparkles className="w-4 h-4 text-sky-400" />
+                <RefreshCw className="w-4 h-4 text-sky-400" />
                 <span>Style Loading Indicator (Page Spinner)</span>
               </label>
               <select
@@ -1403,42 +1304,47 @@ export const Configurator: React.FC<ConfiguratorProps> = ({
         </div>
       )}
 
-      {/* TAB 5: MULTI PLATFORM TARGETS */}
+      {/* TAB 5: MOBILE PLATFORM TARGETS */}
       {activeTab === 'platforms' && (
         <div className="space-y-3">
           <p className="text-xs text-slate-400 mb-2">
-            Dengan Flutter, satu kode basis `main.dart` yang kami hasilkan dapat langsung dikompilasi ke 6 platform berikut:
+            Pilih 1 platform target utama untuk kompilasi build agar proses kompilasi fokus, stabil, dan tidak bentrok:
           </p>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             {[
-              { id: 'android', name: 'Android APK / Bundle', icon: <Smartphone className="w-4 h-4 text-emerald-400" /> },
-              { id: 'ios', name: 'iOS App Store', icon: <Smartphone className="w-4 h-4 text-purple-400" /> },
-              { id: 'web', name: 'Flutter Web / PWA', icon: <Globe className="w-4 h-4 text-indigo-400" /> },
-              { id: 'windows', name: 'Windows Desktop', icon: <Monitor className="w-4 h-4 text-sky-400" /> },
-              { id: 'macos', name: 'macOS Desktop', icon: <Laptop className="w-4 h-4 text-slate-300" /> },
-              { id: 'linux', name: 'Linux Desktop', icon: <Terminal className="w-4 h-4 text-amber-400" /> },
-            ].map((p) => (
-              <label
-                key={p.id}
-                className="flex items-center justify-between p-3 bg-slate-950 border border-slate-800 rounded-xl cursor-pointer"
-              >
-                <div className="flex items-center gap-2">
-                  {p.icon}
-                  <span className="text-xs font-bold text-white">{p.name}</span>
-                </div>
-                <input
-                  type="checkbox"
-                  checked={
-                    config.supportedPlatforms[p.id as keyof AppConfig['supportedPlatforms']]
-                  }
-                  onChange={() =>
-                    handlePlatformToggle(p.id as keyof AppConfig['supportedPlatforms'])
-                  }
-                  className="w-4 h-4 accent-sky-500"
-                />
-              </label>
-            ))}
+              { id: 'android', name: 'Android Target (APK & Play Store AAB)', icon: <Smartphone className="w-4 h-4 text-emerald-400" />, desc: 'Kompilasi khusus ke APK Release & AAB Bundle untuk instalasi langsung atau publikasi Google Play Store.' },
+              { id: 'ios', name: 'iOS Target (App Store Xcode Project)', icon: <Smartphone className="w-4 h-4 text-purple-400" />, desc: 'Kompilasi khusus ke proyek Xcode Swift/SwiftUI untuk didistribusikan via TestFlight & Apple App Store.' },
+            ].map((p) => {
+              const isSelected = p.id === 'android' ? Boolean(config.supportedPlatforms.android && !config.supportedPlatforms.ios) : Boolean(config.supportedPlatforms.ios && !config.supportedPlatforms.android);
+              return (
+                <button
+                  type="button"
+                  key={p.id}
+                  onClick={() => handleSelectPlatform(p.id as 'android' | 'ios')}
+                  className={`flex items-start justify-between p-4 border rounded-xl cursor-pointer text-left transition-all ${
+                    isSelected
+                      ? 'bg-sky-500/15 border-sky-500 ring-1 ring-sky-500 text-white'
+                      : 'bg-slate-950 border-slate-800 text-slate-400 hover:border-slate-700 hover:text-white'
+                  }`}
+                >
+                  <div className="space-y-1 pr-2">
+                    <div className="flex items-center gap-2">
+                      {p.icon}
+                      <span className="text-xs font-bold text-white">{p.name}</span>
+                    </div>
+                    <p className="text-[11px] text-slate-400">{p.desc}</p>
+                  </div>
+                  <input
+                    type="radio"
+                    name="platformTarget"
+                    checked={isSelected}
+                    onChange={() => handleSelectPlatform(p.id as 'android' | 'ios')}
+                    className="w-4 h-4 accent-sky-500 mt-1 shrink-0"
+                  />
+                </button>
+              );
+            })}
           </div>
         </div>
       )}
