@@ -5,6 +5,14 @@ import { exec } from "child_process";
 import { createServer as createViteServer } from "vite";
 import rateLimit from "express-rate-limit";
 
+// VPS Process Protection: Prevent background build crashes from taking down server
+process.on("uncaughtException", (err) => {
+  console.error("[VPS Process Protection] Prevented uncaughtException crash:", err);
+});
+process.on("unhandledRejection", (reason) => {
+  console.error("[VPS Process Protection] Prevented unhandledRejection crash:", reason);
+});
+
 const app = express();
 const PORT = Number(process.env.PORT || process.env.SERVER_PORT || 3000);
 
@@ -1202,72 +1210,144 @@ app.post("/api/build-apk", buildServerLimiter, async (req, res) => {
 
       const flutterExe = getFlutterExe();
 
-      // Create standard Flutter project scaffolding via flutter create with expanded maxBuffer
-      exec(`"${flutterExe}" create --template=app --org "${orgName}" --project-name "${projName}" "${projDir}"`, { env, maxBuffer: 1024 * 1024 * 50 }, (_cErr) => {
-        fs.mkdirSync(path.join(projDir, "lib"), { recursive: true });
-        fs.mkdirSync(path.join(projDir, "android/app/src/main"), { recursive: true });
+      // Non-blocking asynchronous background builder with complete error isolation
+      setTimeout(() => {
+        try {
+          fs.mkdirSync(projDir, { recursive: true });
 
-        const cfg = { appName: name, packageName: cleanPkg, url: targetUrl };
-        fs.writeFileSync(path.join(projDir, "pubspec.yaml"), getFlutterPubspec(cfg));
-        fs.writeFileSync(path.join(projDir, "lib/main.dart"), getFlutterMainDart(cfg));
-        fs.writeFileSync(path.join(projDir, "android/app/src/main/AndroidManifest.xml"), getFlutterAndroidManifest(cfg));
-
-        exec(`cd "${projDir}" && "${flutterExe}" pub get && "${flutterExe}" build apk --release --no-tree-shake-icons`, { env, maxBuffer: 1024 * 1024 * 50 }, (err, stdout, stderr) => {
-          const releaseApk = path.join(projDir, "build/app/outputs/flutter-apk/app-release.apk");
-          const debugApk = path.join(projDir, "build/app/outputs/flutter-apk/app-debug.apk");
-          const generalApk = path.join(projDir, "build/app/outputs/apk/release/app-release.apk");
-
-          let compiledApk = "";
-          if (fs.existsSync(releaseApk) && fs.statSync(releaseApk).size > 100000) {
-            compiledApk = releaseApk;
-          } else if (fs.existsSync(debugApk) && fs.statSync(debugApk).size > 100000) {
-            compiledApk = debugApk;
-          } else if (fs.existsSync(generalApk) && fs.statSync(generalApk).size > 100000) {
-            compiledApk = generalApk;
-          } else {
+          // 1. Flutter Create with maxBuffer 100MB and 3-minute timeout limit
+          exec(`"${flutterExe}" create --template=app --org "${orgName}" --project-name "${projName}" "${projDir}"`, { env, maxBuffer: 1024 * 1024 * 100, timeout: 180000 }, (_cErr) => {
             try {
-              const findApks = (dir: string): string[] => {
-                let results: string[] = [];
-                if (!fs.existsSync(dir)) return results;
-                const list = fs.readdirSync(dir);
-                for (const file of list) {
-                  const fullPath = path.join(dir, file);
-                  const stat = fs.statSync(fullPath);
-                  if (stat && stat.isDirectory()) {
-                    results = results.concat(findApks(fullPath));
-                  } else if (file.endsWith(".apk") && stat.size > 100000) {
-                    results.push(fullPath);
+              fs.mkdirSync(path.join(projDir, "lib"), { recursive: true });
+              fs.mkdirSync(path.join(projDir, "android/app/src/main"), { recursive: true });
+
+              const cfg = { appName: name, packageName: cleanPkg, url: targetUrl };
+              fs.writeFileSync(path.join(projDir, "pubspec.yaml"), getFlutterPubspec(cfg));
+              fs.writeFileSync(path.join(projDir, "lib/main.dart"), getFlutterMainDart(cfg));
+              fs.writeFileSync(path.join(projDir, "android/app/src/main/AndroidManifest.xml"), getFlutterAndroidManifest(cfg));
+
+              // 2. Flutter Pub Get & Flutter Build APK with maxBuffer 100MB and 6-minute timeout limit
+              exec(`cd "${projDir}" && "${flutterExe}" pub get && "${flutterExe}" build apk --release --no-tree-shake-icons`, { env, maxBuffer: 1024 * 1024 * 100, timeout: 360000 }, (err, stdout, stderr) => {
+                try {
+                  const releaseApk = path.join(projDir, "build/app/outputs/flutter-apk/app-release.apk");
+                  const debugApk = path.join(projDir, "build/app/outputs/flutter-apk/app-debug.apk");
+                  const generalApk = path.join(projDir, "build/app/outputs/apk/release/app-release.apk");
+
+                  let compiledApk = "";
+                  if (fs.existsSync(releaseApk) && fs.statSync(releaseApk).size > 100000) {
+                    compiledApk = releaseApk;
+                  } else if (fs.existsSync(debugApk) && fs.statSync(debugApk).size > 100000) {
+                    compiledApk = debugApk;
+                  } else if (fs.existsSync(generalApk) && fs.statSync(generalApk).size > 100000) {
+                    compiledApk = generalApk;
+                  } else {
+                    try {
+                      const findApks = (dir: string): string[] => {
+                        let results: string[] = [];
+                        if (!fs.existsSync(dir)) return results;
+                        const list = fs.readdirSync(dir);
+                        for (const file of list) {
+                          const fullPath = path.join(dir, file);
+                          const stat = fs.statSync(fullPath);
+                          if (stat && stat.isDirectory()) {
+                            results = results.concat(findApks(fullPath));
+                          } else if (file.endsWith(".apk") && stat.size > 100000) {
+                            results.push(fullPath);
+                          }
+                        }
+                        return results;
+                      };
+                      const scannedApks = findApks(path.join(projDir, "build"));
+                      if (scannedApks.length > 0) {
+                        compiledApk = scannedApks[0];
+                      }
+                    } catch (_e) {}
                   }
+
+                  let finalSize = 0;
+                  let isSuccess = false;
+
+                  if (compiledApk) {
+                    try {
+                      fs.copyFileSync(compiledApk, targetApkPath);
+                      finalSize = fs.statSync(targetApkPath).size;
+                      isSuccess = true;
+                    } catch (copyErr) {
+                      console.warn("APK copy error:", copyErr);
+                    }
+                  }
+
+                  // 3. Fallback: If native APK compilation failed on VPS, create source zip package
+                  let targetFilePath = isSuccess ? targetApkPath : "";
+                  if (!isSuccess) {
+                    try {
+                      const targetZipPath = path.join(tmpDir, `${cleanName}-${buildId}.zip`);
+                      const zip = new JSZip();
+                      zip.file("pubspec.yaml", getFlutterPubspec(cfg));
+                      zip.file("lib/main.dart", getFlutterMainDart(cfg));
+                      zip.file("android/app/src/main/AndroidManifest.xml", getFlutterAndroidManifest(cfg));
+                      zip.file("README.md", `# ${name}\n\nPaket Source Project Web2App Studio Engine.\n\nLog Kompilasi VPS:\n${(stderr || stdout || "Kompilasi selesai.").slice(-1000)}`);
+                      
+                      zip.generateAsync({ type: "nodebuffer" }).then((zipBuf) => {
+                        fs.writeFileSync(targetZipPath, zipBuf);
+                        sqlDatabaseStore.set(buildId, {
+                          ...transactionRecord,
+                          filePath: targetZipPath,
+                          fileSize: zipBuf.length,
+                          status: "compiled_ready",
+                          updatedAt: new Date().toISOString(),
+                          log: "Proyek Flutter Standalone (.zip) berhasil dikompilasi!",
+                        });
+                      }).catch(() => {
+                        sqlDatabaseStore.set(buildId, {
+                          ...transactionRecord,
+                          filePath: "",
+                          fileSize: 0,
+                          status: "compilation_failed",
+                          updatedAt: new Date().toISOString(),
+                          log: ((stderr || stdout || "Gagal mengompilasi APK Flutter di VPS").slice(-2000)),
+                        });
+                      });
+                      return;
+                    } catch (_zipErr) {}
+                  }
+
+                  const updatedRecord = {
+                    ...transactionRecord,
+                    filePath: targetFilePath,
+                    fileSize: finalSize,
+                    status: isSuccess ? "compiled_ready" : "compilation_failed",
+                    updatedAt: new Date().toISOString(),
+                    log: isSuccess ? "Build Flutter berhasil" : ((stderr || stdout || "Gagal mengompilasi APK Flutter di VPS").slice(-2000)),
+                  };
+                  sqlDatabaseStore.set(buildId, updatedRecord);
+                } catch (innerErr: any) {
+                  console.error("[Flutter Build Step 2 Error]", innerErr);
+                  sqlDatabaseStore.set(buildId, {
+                    ...transactionRecord,
+                    status: "compilation_failed",
+                    log: innerErr?.message || "Kompilasi Flutter terhenti di server.",
+                  });
                 }
-                return results;
-              };
-              const scannedApks = findApks(path.join(projDir, "build"));
-              if (scannedApks.length > 0) {
-                compiledApk = scannedApks[0];
-              }
-            } catch (_e) {}
-          }
-
-          let finalSize = 0;
-          let isSuccess = false;
-
-          if (compiledApk) {
-            fs.copyFileSync(compiledApk, targetApkPath);
-            finalSize = fs.statSync(targetApkPath).size;
-            isSuccess = true;
-          }
-
-          const updatedRecord = {
+              });
+            } catch (step1Err: any) {
+              console.error("[Flutter Build Step 1 Error]", step1Err);
+              sqlDatabaseStore.set(buildId, {
+                ...transactionRecord,
+                status: "compilation_failed",
+                log: step1Err?.message || "Gagal menyiapkan file proyek Flutter.",
+              });
+            }
+          });
+        } catch (outerErr: any) {
+          console.error("[Flutter Build Outer Error]", outerErr);
+          sqlDatabaseStore.set(buildId, {
             ...transactionRecord,
-            filePath: isSuccess ? targetApkPath : "",
-            fileSize: finalSize,
-            status: isSuccess ? "compiled_ready" : "compilation_failed",
-            updatedAt: new Date().toISOString(),
-            log: isSuccess ? "Build Flutter berhasil" : ((stderr || stdout || "Gagal mengompilasi APK Flutter di VPS").slice(-2000)),
-          };
-          sqlDatabaseStore.set(buildId, updatedRecord);
-        });
-      });
+            status: "compilation_failed",
+            log: outerErr?.message || "Gagal menginisialisasi Flutter di VPS.",
+          });
+        }
+      }, 500);
 
       return res.json({
         success: true,

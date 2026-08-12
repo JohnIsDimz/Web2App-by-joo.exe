@@ -390,9 +390,12 @@ async function getUserProfileSafe(uid: string): Promise<UserProfileData> {
   // 2. Fallback to Firestore with 1.5s timeout race condition
   const userRef = doc(db, 'users', uid);
   try {
-    const fetchPromise = getDoc(userRef);
-    const timeoutPromise = new Promise<never>((_, reject) =>
-      setTimeout(() => reject(new Error('Firestore timeout')), 1500)
+    const fetchPromise = getDoc(userRef).catch((err) => {
+      console.warn("Firestore getDoc background fetch warning:", err);
+      return null;
+    });
+    const timeoutPromise = new Promise<null>((resolve) =>
+      setTimeout(() => resolve(null), 1500)
     );
 
     const snap = await Promise.race([fetchPromise, timeoutPromise]);
